@@ -40,8 +40,14 @@ const date = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", y
     transition: color 160ms;
   }
 
-  .back:hover {
-    color: var(--seg);
+  @media (hover: hover) and (pointer: fine) {
+    .back:hover {
+      color: var(--seg);
+    }
+
+    .prose :global(a:hover) {
+      text-decoration-color: var(--seg);
+    }
   }
 
   h1 {
@@ -71,6 +77,7 @@ const date = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", y
     text-decoration: underline;
     text-decoration-color: var(--line-strong);
     text-underline-offset: 3px;
+    transition: text-decoration-color 160ms;
   }
 
   .prose :global(:not(pre) > code) {

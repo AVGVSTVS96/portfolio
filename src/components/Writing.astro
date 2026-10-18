@@ -43,8 +43,10 @@ const date = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric",
     transition: color 160ms;
   }
 
-  a:hover {
-    color: var(--seg);
+  @media (hover: hover) and (pointer: fine) {
+    a:hover {
+      color: var(--seg);
+    }
   }
 
   .via {

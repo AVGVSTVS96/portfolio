@@ -79,12 +79,9 @@ const format = new Intl.NumberFormat("en-US", { notation: "compact" });
     padding-top: 1px;
     font-size: 13px;
     color: var(--ink-3);
-    transition: color 160ms;
-  }
-
-  li:hover .index {
-    color: var(--seg);
-    text-shadow: var(--seg-glow);
+    transition:
+      color 160ms,
+      text-shadow 160ms;
   }
 
   .name {
@@ -92,16 +89,33 @@ const format = new Intl.NumberFormat("en-US", { notation: "compact" });
   }
 
   .name::after {
+    display: inline-block;
     margin-left: 4px;
     content: "↗";
     font-size: 11px;
     color: var(--ink-3);
     opacity: 0;
-    transition: opacity 160ms;
+    translate: -2px 2px;
+    transition:
+      opacity 160ms,
+      translate 160ms var(--ease-out);
   }
 
-  .name:hover::after {
+  .name:focus-visible::after {
     opacity: 1;
+    translate: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    li:hover .index {
+      color: var(--seg);
+      text-shadow: var(--seg-glow);
+    }
+
+    .name:hover::after {
+      opacity: 1;
+      translate: none;
+    }
   }
 
   .version {
@@ -153,6 +167,12 @@ const format = new Intl.NumberFormat("en-US", { notation: "compact" });
 
   .month:hover i[data-on] {
     opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .name::after {
+      translate: none;
+    }
   }
 
   @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
