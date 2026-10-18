@@ -203,7 +203,7 @@ const links = [
 
   .card {
     position: absolute;
-    bottom: calc(100% + 10px);
+    top: calc(100% + 10px);
     left: 0;
     z-index: 10;
     width: var(--w, 0);
@@ -217,7 +217,7 @@ const links = [
     opacity: 0;
     scale: 0.96;
     filter: blur(4px);
-    transform-origin: var(--origin, 50%) 100%;
+    transform-origin: var(--origin, 50%) 0;
     pointer-events: none;
     transition:
       width 320ms var(--ease),
@@ -237,12 +237,6 @@ const links = [
     scale: 1;
     filter: none;
     pointer-events: auto;
-  }
-
-  .card::after {
-    position: absolute;
-    inset: 100% 0 -14px;
-    content: "";
   }
 
   .panel {
