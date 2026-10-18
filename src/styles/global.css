@@ -148,6 +148,12 @@ a {
   animation: enter 500ms var(--ease-out) 60ms backwards;
 }
 
+:root:active-view-transition-type(reveal)::view-transition-old(root),
+:root:active-view-transition-type(reveal)::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 @keyframes enter {
   from {
     opacity: 0;

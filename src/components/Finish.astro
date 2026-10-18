@@ -6,11 +6,45 @@
 
 <script>
   const root = document.documentElement;
+  const button = document.querySelector<HTMLElement>(".finish");
+  const track = button?.querySelector<HTMLElement>(".track");
 
-  document.querySelector(".finish")?.addEventListener("click", () => {
-    const finish = root.dataset.finish === "silver" ? "black" : "silver";
+  const apply = (finish: string) => {
     root.dataset.finish = finish;
     localStorage.setItem("finish", finish);
+  };
+
+  button?.addEventListener("click", async () => {
+    const finish = root.dataset.finish === "silver" ? "black" : "silver";
+
+    if (!track || !("ViewTransition" in window && "types" in ViewTransition.prototype)) {
+      apply(finish);
+
+      return;
+    }
+
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.startViewTransition(() => apply(finish));
+
+      return;
+    }
+
+    const { left, top, width, height } = track.getBoundingClientRect();
+    const x = left + width / 2;
+    const y = top + height / 2;
+    const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    const transition = document.startViewTransition({ update: () => apply(finish), types: ["reveal"] });
+
+    try {
+      await transition.ready;
+    } catch {
+      return;
+    }
+
+    root.animate(
+      { clipPath: [`circle(0 at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+      { duration: 500, easing: "cubic-bezier(0.32, 0.72, 0, 1)", pseudoElement: "::view-transition-new(root)" },
+    );
   });
 </script>
 
@@ -46,7 +80,7 @@
     box-shadow:
       0 1px 0 var(--edge) inset,
       0 1px 2px rgb(0 0 0 / 0.5);
-    transition: translate 220ms var(--ease);
+    transition: translate 220ms var(--ease-out);
   }
 
   .knob::after {
@@ -56,8 +90,16 @@
     border-inline: 1px solid var(--line-strong);
   }
 
+  .finish:active .knob {
+    translate: 3px 0;
+  }
+
   :root[data-finish="silver"] .knob {
     translate: 12px 0;
+  }
+
+  :root[data-finish="silver"] .finish:active .knob {
+    translate: 9px 0;
   }
 
   .label {
@@ -67,5 +109,11 @@
   :root:not([data-finish="silver"]) .label:first-child,
   :root[data-finish="silver"] .label:last-child {
     color: var(--ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .knob {
+      transition: none;
+    }
   }
 </style>
