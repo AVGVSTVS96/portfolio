@@ -202,6 +202,8 @@ const links = [
   }
 
   .card {
+    --swap: 240ms var(--ease);
+
     position: absolute;
     top: calc(100% + 10px);
     left: 0;
@@ -220,9 +222,9 @@ const links = [
     transform-origin: var(--origin, 50%) 0;
     pointer-events: none;
     transition:
-      width 320ms var(--ease),
-      height 320ms var(--ease),
-      translate 320ms var(--ease),
+      width var(--swap),
+      height var(--swap),
+      translate var(--swap),
       opacity 180ms,
       scale 220ms var(--ease),
       filter 220ms;
@@ -246,16 +248,13 @@ const links = [
     width: max-content;
     max-width: 320px;
     padding: 14px;
-    opacity: 0;
-    filter: blur(6px);
+    /* opacity() inside the filter keeps the fade on the main thread with the card's width and height; Chrome composites a plain opacity and starts it a frame ahead of the box */
+    filter: opacity(0) blur(6px);
     pointer-events: none;
-    transition:
-      opacity 240ms,
-      filter 240ms;
+    transition: filter var(--swap);
   }
 
   .panel[data-active] {
-    opacity: 1;
     filter: none;
     pointer-events: auto;
   }
