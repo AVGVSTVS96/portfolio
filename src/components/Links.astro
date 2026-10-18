@@ -176,6 +176,7 @@ const links = [
 <style>
   .links {
     position: relative;
+    z-index: 1;
     width: max-content;
   }
 
@@ -196,13 +197,27 @@ const links = [
     transition: color 160ms;
   }
 
-  ul a:hover,
   ul a[data-current] {
     color: var(--ink);
   }
 
+  svg {
+    transition: scale 120ms var(--ease-out);
+  }
+
+  a:active svg {
+    scale: 0.9;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    ul a:hover {
+      color: var(--ink);
+    }
+  }
+
   .card {
     --swap: 240ms var(--ease);
+    --show: 150ms;
 
     position: absolute;
     top: calc(100% + 10px);
@@ -225,9 +240,9 @@ const links = [
       width var(--swap),
       height var(--swap),
       translate var(--swap),
-      opacity 180ms,
-      scale 220ms var(--ease),
-      filter 220ms;
+      opacity var(--show),
+      scale var(--show) var(--ease),
+      filter var(--show);
   }
 
   .card[data-instant] {
@@ -235,6 +250,8 @@ const links = [
   }
 
   .card[data-open] {
+    --show: 200ms;
+
     opacity: 1;
     scale: 1;
     filter: none;
@@ -366,5 +383,14 @@ const links = [
     background: var(--seg);
     box-shadow: var(--seg-glow);
     opacity: 0.85;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card {
+      scale: none;
+      transition:
+        opacity var(--show),
+        filter var(--show);
+    }
   }
 </style>
