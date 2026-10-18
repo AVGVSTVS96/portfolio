@@ -125,7 +125,7 @@ const columns = weeks.map((week, index) => {
     }
 
     .week {
-      animation-delay: calc(sibling-index() * 8ms);
+      animation-delay: calc((sibling-count() - sibling-index()) * 8ms);
     }
 
     .display[data-on] :is(.readout, .week) {
