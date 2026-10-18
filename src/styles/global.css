@@ -16,8 +16,14 @@
   --seg-glow: 0 0 6px rgb(92 242 208 / 0.55);
   --shadow: 0 1px 0 var(--edge) inset, 0 24px 48px -16px rgb(0 0 0 / 0.8);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --enter: enter 700ms var(--ease-out) backwards;
 
   color-scheme: dark;
+}
+
+:root[data-arrived] {
+  --enter: none;
 }
 
 :root[data-finish="silver"] {
@@ -121,11 +127,53 @@ a {
   text-shadow: var(--seg-glow);
 }
 
+@view-transition {
+  navigation: auto;
+  types: page;
+}
+
+:root:active-view-transition-type(page) header {
+  view-transition-name: header;
+}
+
+::view-transition-group(header) {
+  animation: none;
+}
+
+:root:active-view-transition-type(page)::view-transition-old(root) {
+  animation: out 160ms var(--ease-out) both;
+}
+
+:root:active-view-transition-type(page)::view-transition-new(root) {
+  animation: enter 500ms var(--ease-out) 60ms backwards;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+    filter: blur(4px);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes out {
+  to {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0s !important;
-    animation-duration: 0s !important;
+  :root {
+    --enter: fade 400ms ease backwards;
+  }
+
+  :root:active-view-transition-type(page)::view-transition-new(root) {
+    animation-name: fade;
   }
 }

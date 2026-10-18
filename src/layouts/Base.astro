@@ -26,6 +26,12 @@ const { title, description } = Astro.props;
       document.documentElement.dataset.finish =
         localStorage.getItem("finish") ??
         (matchMedia("(prefers-color-scheme: light)").matches ? "silver" : "black");
+
+      addEventListener("pagereveal", (event) => {
+        if (event.viewTransition) {
+          document.documentElement.dataset.arrived = "";
+        }
+      });
     </script>
     <Font cssVariable="--font-sans" preload />
     <Font cssVariable="--font-mono" />
@@ -63,6 +69,10 @@ const { title, description } = Astro.props;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+  }
+
+  header {
+    animation: var(--enter);
   }
 
   footer {

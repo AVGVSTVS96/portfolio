@@ -44,6 +44,19 @@ import Base from "../layouts/Base.astro";
     margin-top: 18vh;
   }
 
+  .hero > :global(*),
+  main > :global(section:not(.hero)) {
+    animation: var(--enter);
+  }
+
+  .hero > :global(*) {
+    animation-delay: calc(sibling-index() * 70ms);
+  }
+
+  main > :global(section:not(.hero)) {
+    animation-delay: calc((sibling-index() + 4) * 70ms);
+  }
+
   .kana {
     margin: 0 0 10px;
     font-size: 12px;

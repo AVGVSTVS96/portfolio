@@ -29,6 +29,11 @@ const date = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", y
     margin-top: 12vh;
   }
 
+  article > * {
+    animation: var(--enter);
+    animation-delay: calc(sibling-index() * 70ms);
+  }
+
   .back {
     display: block;
     margin-bottom: 40px;
