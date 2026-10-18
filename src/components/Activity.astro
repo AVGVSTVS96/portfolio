@@ -14,7 +14,7 @@ const columns = weeks.map((week, index) => {
 });
 ---
 
-<div class="display screen" data-readout>
+<div class="display screen" data-readout data-boot>
   <div class="readout">
     <span class="count dot lit" data-show="count" data-idle={total}>{total}</span>
     <span class="label" data-show="date" data-idle="Contributions · last 12 months">Contributions · last 12 months</span>
@@ -116,5 +116,20 @@ const columns = weeks.map((week, index) => {
   .cell:hover {
     outline: 1px solid var(--seg);
     outline-offset: 1px;
+  }
+
+  @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+    .readout,
+    .week {
+      animation: fade 420ms var(--ease-out) backwards paused;
+    }
+
+    .week {
+      animation-delay: calc(sibling-index() * 8ms);
+    }
+
+    .display[data-on] :is(.readout, .week) {
+      animation-play-state: running;
+    }
   }
 </style>

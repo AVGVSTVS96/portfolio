@@ -12,7 +12,8 @@
     "fix": "oxlint --fix; oxfmt"
   },
   "dependencies": {
-    "astro": "7.4.0"
+    "astro": "7.4.0",
+    "motion": "14.3.0"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
