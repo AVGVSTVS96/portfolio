@@ -1,0 +1,120 @@
+---
+import { contributions, weeks } from "../lib/data";
+
+const format = new Intl.NumberFormat("en-US");
+const month = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
+const long = new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", year: "numeric", timeZone: "UTC" });
+const total = format.format(contributions.total.lastYear);
+
+const columns = weeks.map((week, index) => {
+  const first = new Date(week[0]?.date ?? "");
+  const starts = index > 0 && first.getUTCDate() <= 7;
+
+  return { week, label: starts ? month.format(first) : "" };
+});
+---
+
+<div class="display screen" data-readout>
+  <div class="readout">
+    <span class="count dot lit" data-show="count" data-idle={total}>{total}</span>
+    <span class="label" data-show="date" data-idle="Contributions · last 12 months">Contributions · last 12 months</span>
+  </div>
+  <div class="calendar">
+    {
+      columns.map(({ week, label }) => (
+        <div class="week">
+          <span class="month label">{label}</span>
+          {week.map((entry) => (
+            <span
+              class="cell"
+              data-level={entry.level}
+              data-tip
+              data-count={format.format(entry.count)}
+              data-date={long.format(new Date(entry.date))}
+            />
+          ))}
+        </div>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .display {
+    padding: 18px 18px 16px;
+  }
+
+  .readout {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .count {
+    font-size: 34px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .readout .label {
+    color: var(--seg);
+    opacity: 0.6;
+    text-align: right;
+  }
+
+  .calendar {
+    display: flex;
+    justify-content: end;
+    gap: 3px;
+    overflow: hidden;
+  }
+
+  .week {
+    display: grid;
+    flex: none;
+    grid-template-rows: 14px repeat(7, 9px);
+    gap: 3px;
+  }
+
+  .month {
+    width: 0;
+    overflow: visible;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    color: var(--seg);
+    opacity: 0.45;
+  }
+
+  .cell {
+    width: 9px;
+    border-radius: 2px;
+    background: var(--seg);
+    box-shadow: var(--seg-glow);
+    transition: opacity 120ms;
+  }
+
+  .cell[data-level="0"] {
+    background: var(--seg-off);
+    box-shadow: none;
+  }
+
+  .cell[data-level="1"] {
+    opacity: 0.3;
+  }
+
+  .cell[data-level="2"] {
+    opacity: 0.52;
+  }
+
+  .cell[data-level="3"] {
+    opacity: 0.75;
+  }
+
+  .cell:hover {
+    outline: 1px solid var(--seg);
+    outline-offset: 1px;
+  }
+</style>

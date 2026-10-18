@@ -1,0 +1,86 @@
+---
+import Activity from "../components/Activity.astro";
+import Links from "../components/Links.astro";
+import Section from "../components/Section.astro";
+import Works from "../components/Works.astro";
+import Writing from "../components/Writing.astro";
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Bassim Shahidy" description="Bassim Shahidy builds open-source tools for AI interfaces and coding agents.">
+  <main>
+    <section class="hero">
+      <p class="kana dot">バシム・シャヒディ</p>
+      <h1>Bassim Shahidy</h1>
+      <p class="lede">I build open-source tools for AI interfaces and coding agents.</p>
+      <p class="aside">
+        Author of <a href="https://github.com/AVGVSTVS96/react-shiki">react-shiki</a>. Previously founding engineer at <a
+          href="https://www.assistant-ui.com">assistant-ui</a
+        >, YC W25. San Francisco.
+      </p>
+      <Links />
+    </section>
+
+    <Section jp="活動" title="Activity">
+      <Activity />
+    </Section>
+
+    <Section jp="作品" title="Works">
+      <Works />
+    </Section>
+
+    <Section jp="文章" title="Writing" id="writing">
+      <Writing />
+    </Section>
+  </main>
+</Base>
+
+<script>
+  import "../scripts/readout";
+</script>
+
+<style>
+  .hero {
+    margin-top: 18vh;
+  }
+
+  .kana {
+    margin: 0 0 10px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--ink-3);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 30px;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  .lede {
+    max-width: 30em;
+    margin: 18px 0 0;
+    font-size: 17px;
+    line-height: 1.5;
+  }
+
+  .aside {
+    max-width: 34em;
+    margin: 8px 0 28px;
+    color: var(--ink-2);
+  }
+
+  .aside a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 160ms;
+  }
+
+  .aside a:hover {
+    text-decoration-color: var(--seg);
+  }
+</style>

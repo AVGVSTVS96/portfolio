@@ -1,0 +1,71 @@
+<button class="finish" type="button" aria-label="Switch finish between black and silver">
+  <span class="label">Black</span>
+  <span class="track" aria-hidden="true"><span class="knob"></span></span>
+  <span class="label">Silver</span>
+</button>
+
+<script>
+  const root = document.documentElement;
+
+  document.querySelector(".finish")?.addEventListener("click", () => {
+    const finish = root.dataset.finish === "silver" ? "black" : "silver";
+    root.dataset.finish = finish;
+    localStorage.setItem("finish", finish);
+  });
+</script>
+
+<style>
+  .finish {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+
+  .track {
+    position: relative;
+    width: 30px;
+    height: 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    background: var(--screen);
+    box-shadow: 0 1px 3px var(--screen-edge) inset;
+  }
+
+  .knob {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 14px;
+    height: 10px;
+    border-radius: 1px;
+    background: linear-gradient(var(--sheen), var(--panel));
+    box-shadow:
+      0 1px 0 var(--edge) inset,
+      0 1px 2px rgb(0 0 0 / 0.5);
+    transition: translate 220ms var(--ease);
+  }
+
+  .knob::after {
+    position: absolute;
+    inset: 3px 6px;
+    content: "";
+    border-inline: 1px solid var(--line-strong);
+  }
+
+  :root[data-finish="silver"] .knob {
+    translate: 12px 0;
+  }
+
+  .label {
+    transition: color 220ms;
+  }
+
+  :root:not([data-finish="silver"]) .label:first-child,
+  :root[data-finish="silver"] .label:last-child {
+    color: var(--ink);
+  }
+</style>

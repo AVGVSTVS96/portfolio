@@ -1,0 +1,36 @@
+---
+interface Props {
+  jp: string;
+  title: string;
+  id?: string;
+}
+
+const { jp, title, id } = Astro.props;
+---
+
+<section id={id}>
+  <h2>
+    <span class="dot jp">{jp}</span>
+    <span class="label">{title}</span>
+  </h2>
+  <slot />
+</section>
+
+<style>
+  section {
+    margin-top: 96px;
+  }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 20px;
+    font-weight: 400;
+  }
+
+  .jp {
+    font-size: 15px;
+    color: var(--ink);
+  }
+</style>

@@ -1,0 +1,377 @@
+---
+import { siGithub, siNpm, siX } from "simple-icons";
+import { contributions, npmVersion, npmWeekly, weeks } from "../lib/data";
+
+const AVATAR = "https://avatars.githubusercontent.com/u/122117267?s=96";
+
+const LINKEDIN =
+  "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 1 1 0-4.125 2.062 2.062 0 0 1 0 4.125zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z";
+
+const [version, weekly] = await Promise.all([npmVersion("react-shiki"), npmWeekly("react-shiki")]);
+const peak = Math.max(...weekly);
+const recent = weeks.slice(-30);
+const format = new Intl.NumberFormat("en-US");
+const day = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+
+const links = [
+  { key: "github", label: "GitHub", href: "https://github.com/AVGVSTVS96", path: siGithub.path },
+  { key: "x", label: "X", href: "https://x.com/AVGVSTVS96", path: siX.path },
+  { key: "linkedin", label: "LinkedIn", href: "https://www.linkedin.com/in/bassimshahidy", path: LINKEDIN },
+  { key: "npm", label: "npm", href: "https://www.npmjs.com/package/react-shiki", path: siNpm.path },
+];
+---
+
+<nav class="links" aria-label="Elsewhere">
+  <div class="card" aria-hidden="true">
+    <div class="panel" data-panel="github" data-readout>
+      <div class="head">
+        <img src={AVATAR} alt="" width="32" height="32" />
+        <div>
+          <p class="title">AVGVSTVS96</p>
+          <p class="sub" data-show="tip" data-idle={`${format.format(contributions.total.lastYear)} contributions in the last year`}>
+            {format.format(contributions.total.lastYear)} contributions in the last year
+          </p>
+        </div>
+      </div>
+      <div class="grid screen">
+        {
+          recent.map((week) => (
+            <div class="week">
+              {week.map((entry) => (
+                <span
+                  class="cell"
+                  data-level={entry.level}
+                  data-tip={`${entry.count} contribution${entry.count === 1 ? "" : "s"} · ${day.format(new Date(entry.date))}`}
+                />
+              ))}
+            </div>
+          ))
+        }
+      </div>
+    </div>
+
+    <div class="panel" data-panel="x">
+      <div class="head">
+        <img src={AVATAR} alt="" width="32" height="32" />
+        <div>
+          <p class="title">Bassim Shahidy</p>
+          <p class="sub">@AVGVSTVS96</p>
+        </div>
+      </div>
+      <p class="body">Fanatic builder with a single north star: the pursuit of excellence.</p>
+    </div>
+
+    <div class="panel" data-panel="linkedin">
+      <p class="title">Bassim Shahidy</p>
+      <p class="sub">Software engineer · San Francisco</p>
+      <p class="body">Previously founding engineer at assistant-ui, YC W25.</p>
+    </div>
+
+    <div class="panel" data-panel="npm" data-readout>
+      <div class="row">
+        <p class="title">react-shiki <span class="version">v{version}</span></p>
+      </div>
+      <p class="sub" data-show="tip" data-idle={`${format.format(weekly.at(-1) ?? 0)} downloads last week`}>
+        {format.format(weekly.at(-1) ?? 0)} downloads last week
+      </p>
+      <div class="bars screen">
+        {
+          weekly.map((count) => (
+            <span
+              class="bar"
+              style={`--h: ${Math.max(0.04, count / peak)}`}
+              data-tip={`${format.format(count)} downloads in a week`}
+            />
+          ))
+        }
+      </div>
+    </div>
+  </div>
+
+  <ul>
+    {
+      links.map(({ key, label, href, path }) => (
+        <li>
+          <a href={href} data-card={key} aria-label={label}>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d={path} fill="currentColor" />
+            </svg>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<script>
+  const nav = document.querySelector<HTMLElement>(".links");
+  const card = nav?.querySelector<HTMLElement>(".card");
+
+  if (nav && card) {
+    let closing = 0;
+
+    const open = (link: HTMLElement) => {
+      clearTimeout(closing);
+      const panel = card.querySelector<HTMLElement>(`[data-panel="${link.dataset.card}"]`);
+
+      if (!panel) {
+        return;
+      }
+
+      const bounds = nav.getBoundingClientRect();
+      const center = link.offsetLeft + link.offsetWidth / 2;
+      const width = panel.offsetWidth;
+
+      const left = Math.min(
+        Math.max(center - width / 2, Math.max(0, 12 - bounds.left)),
+        innerWidth - 12 - bounds.left - width,
+      );
+
+      const opening = !Object.hasOwn(card.dataset, "open");
+      card.toggleAttribute("data-instant", opening);
+      card.style.setProperty("--w", `${width}px`);
+      card.style.setProperty("--h", `${panel.offsetHeight}px`);
+      card.style.setProperty("--x", `${left}px`);
+      card.style.setProperty("--origin", `${center - left}px`);
+
+      for (const other of card.querySelectorAll<HTMLElement>("[data-active]")) {
+        delete other.dataset.active;
+      }
+
+      for (const other of nav.querySelectorAll<HTMLElement>("[data-current]")) {
+        delete other.dataset.current;
+      }
+
+      panel.dataset.active = "";
+      link.dataset.current = "";
+      requestAnimationFrame(() => {
+        delete card.dataset.instant;
+        card.dataset.open = "";
+      });
+    };
+
+    const close = () => {
+      clearTimeout(closing);
+      closing = window.setTimeout(() => {
+        delete card.dataset.open;
+
+        for (const link of nav.querySelectorAll<HTMLElement>("[data-current]")) {
+          delete link.dataset.current;
+        }
+      }, 160);
+    };
+
+    for (const link of nav.querySelectorAll<HTMLElement>("[data-card]")) {
+      link.addEventListener("pointerenter", (event) => event.pointerType === "mouse" && open(link));
+      link.addEventListener("focus", () => link.matches(":focus-visible") && open(link));
+      link.addEventListener("blur", close);
+    }
+
+    card.addEventListener("pointerenter", () => clearTimeout(closing));
+    nav.addEventListener("pointerleave", close);
+    document.addEventListener("keydown", (event) => event.key === "Escape" && close());
+  }
+</script>
+
+<style>
+  .links {
+    position: relative;
+    width: max-content;
+  }
+
+  ul {
+    display: flex;
+    gap: 4px;
+    margin: 0 0 0 -9px;
+    padding: 0;
+    list-style: none;
+  }
+
+  ul a {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    color: var(--ink-3);
+    transition: color 160ms;
+  }
+
+  ul a:hover,
+  ul a[data-current] {
+    color: var(--ink);
+  }
+
+  .card {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 0;
+    z-index: 10;
+    width: var(--w, 0);
+    height: var(--h, 0);
+    translate: var(--x, 0) 0;
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    opacity: 0;
+    scale: 0.96;
+    filter: blur(4px);
+    transform-origin: var(--origin, 50%) 100%;
+    pointer-events: none;
+    transition:
+      width 320ms var(--ease),
+      height 320ms var(--ease),
+      translate 320ms var(--ease),
+      opacity 180ms,
+      scale 220ms var(--ease),
+      filter 220ms;
+  }
+
+  .card[data-instant] {
+    transition: none;
+  }
+
+  .card[data-open] {
+    opacity: 1;
+    scale: 1;
+    filter: none;
+    pointer-events: auto;
+  }
+
+  .card::after {
+    position: absolute;
+    inset: 100% 0 -14px;
+    content: "";
+  }
+
+  .panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: max-content;
+    max-width: 320px;
+    padding: 14px;
+    opacity: 0;
+    filter: blur(6px);
+    pointer-events: none;
+    transition:
+      opacity 240ms,
+      filter 240ms;
+  }
+
+  .panel[data-active] {
+    opacity: 1;
+    filter: none;
+    pointer-events: auto;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  img {
+    border-radius: 50%;
+    filter: grayscale(1) contrast(1.05);
+  }
+
+  .title {
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  .sub {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .body {
+    max-width: 260px;
+    margin-top: 10px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  .version {
+    margin-left: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--ink-3);
+  }
+
+  .grid {
+    display: flex;
+    gap: 2px;
+    margin-top: 12px;
+    padding: 8px;
+  }
+
+  .week {
+    display: grid;
+    grid-template-rows: repeat(7, 7px);
+    gap: 2px;
+    align-content: start;
+  }
+
+  .cell {
+    width: 7px;
+    border-radius: 1.5px;
+    background: var(--seg);
+    box-shadow: var(--seg-glow);
+    opacity: 0.9;
+  }
+
+  .cell[data-level="0"] {
+    background: var(--seg-off);
+    box-shadow: none;
+    opacity: 1;
+  }
+
+  .cell[data-level="1"] {
+    opacity: 0.28;
+  }
+
+  .cell[data-level="2"] {
+    opacity: 0.5;
+  }
+
+  .cell[data-level="3"] {
+    opacity: 0.72;
+  }
+
+  .cell:hover,
+  .bar:hover {
+    outline: 1px solid var(--seg);
+    outline-offset: 1px;
+  }
+
+  .bars {
+    display: flex;
+    align-items: end;
+    gap: 2px;
+    width: 268px;
+    height: 56px;
+    margin-top: 12px;
+    padding: 8px;
+  }
+
+  .bar {
+    flex: 1;
+    height: calc(var(--h) * 100%);
+    border-radius: 1px;
+    background: var(--seg);
+    box-shadow: var(--seg-glow);
+    opacity: 0.85;
+  }
+</style>

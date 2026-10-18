@@ -1,0 +1,63 @@
+---
+import { getCollection } from "astro:content";
+
+const all = await getCollection("posts");
+const posts = all.toSorted((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const date = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+---
+
+<ol class="writing">
+  {
+    posts.map(({ id, data }) => (
+      <li>
+        <time class="label" datetime={data.pubDate.toISOString()}>
+          {date.format(data.pubDate)}
+        </time>
+        <a href={data.url ?? `/posts/${id}`}>
+          {data.title}
+          {data.via && <span class="via">{data.via} ↗</span>}
+        </a>
+      </li>
+    ))
+  }
+</ol>
+
+<style>
+  .writing {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--line);
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 16px;
+    align-items: baseline;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  a {
+    transition: color 160ms;
+  }
+
+  a:hover {
+    color: var(--seg);
+  }
+
+  .via {
+    margin-left: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+
+  @media (width < 600px) {
+    li {
+      grid-template-columns: 1fr;
+      gap: 2px;
+    }
+  }
+</style>

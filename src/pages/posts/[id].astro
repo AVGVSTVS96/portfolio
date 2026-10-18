@@ -1,0 +1,99 @@
+---
+import { getCollection, render } from "astro:content";
+import Base from "../../layouts/Base.astro";
+
+export const getStaticPaths = async () => {
+  const posts = await getCollection("posts", ({ data }) => !data.url);
+
+  return posts.map((post) => ({ params: { id: post.id }, props: { post } }));
+};
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const date = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+---
+
+<Base title={`${post.data.title} · Bassim Shahidy`} description={post.data.description}>
+  <article>
+    <a class="back label" href="/#writing">← Writing</a>
+    <time class="label" datetime={post.data.pubDate.toISOString()}>{date.format(post.data.pubDate)}</time>
+    <h1>{post.data.title}</h1>
+    <div class="prose">
+      <Content />
+    </div>
+  </article>
+</Base>
+
+<style>
+  article {
+    margin-top: 12vh;
+  }
+
+  .back {
+    display: block;
+    margin-bottom: 40px;
+    transition: color 160ms;
+  }
+
+  .back:hover {
+    color: var(--seg);
+  }
+
+  h1 {
+    margin: 10px 0 40px;
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+  }
+
+  .prose {
+    color: var(--ink-2);
+  }
+
+  .prose :global(:is(h2, h3)) {
+    margin: 2.2em 0 0.6em;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .prose :global(:is(strong, a)) {
+    color: var(--ink);
+  }
+
+  .prose :global(a) {
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+  }
+
+  .prose :global(:not(pre) > code) {
+    padding: 1px 5px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    color: var(--ink);
+  }
+
+  .prose :global(pre) {
+    overflow-x: auto;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--screen) !important;
+    box-shadow: 0 2px 6px var(--screen-edge) inset;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+
+  .prose :global(pre span) {
+    color: var(--shiki-dark);
+  }
+
+  :global(:root[data-finish="silver"]) .prose :global(pre span) {
+    color: var(--shiki-light);
+  }
+</style>

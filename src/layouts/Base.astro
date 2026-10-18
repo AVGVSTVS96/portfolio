@@ -1,0 +1,101 @@
+---
+import { Font } from "astro:assets";
+import Finish from "../components/Finish.astro";
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta name="theme-color" content="#0a0a0b" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script is:inline>
+      document.documentElement.dataset.finish =
+        localStorage.getItem("finish") ??
+        (matchMedia("(prefers-color-scheme: light)").matches ? "silver" : "black");
+    </script>
+    <Font cssVariable="--font-sans" preload />
+    <Font cssVariable="--font-mono" />
+    <Font cssVariable="--font-dot" />
+  </head>
+  <body>
+    <div class="frame">
+      <header>
+        <a href="/" class="badge">
+          <span class="led" aria-hidden="true"></span>
+          <span class="label">BS-96</span>
+        </a>
+        <Finish />
+      </header>
+      <slot />
+      <footer>
+        <span class="label">Model BS-96</span>
+        <span class="label jp">設計 San Francisco</span>
+        <span class="label">© {new Date().getFullYear()}</span>
+      </footer>
+    </div>
+  </body>
+</html>
+
+<style>
+  .frame {
+    width: min(100% - 40px, 680px);
+    margin-inline: auto;
+    padding-block: 28px 40px;
+  }
+
+  header,
+  footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  footer {
+    margin-top: 120px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .badge .label {
+    color: var(--ink-2);
+  }
+
+  .led {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--led);
+    box-shadow: 0 0 8px var(--led);
+  }
+
+  .jp {
+    letter-spacing: 0.1em;
+  }
+
+  @media (width < 480px) {
+    .jp {
+      display: none;
+    }
+  }
+</style>

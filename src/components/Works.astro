@@ -1,0 +1,186 @@
+---
+import activity from "../data/activity.json";
+import { projects } from "../data/projects";
+import { npmVersion } from "../lib/data";
+
+const versions = new Map(
+  await Promise.all(
+    projects.flatMap(({ id, npm }) => (npm ? [npmVersion(npm).then((version) => [id, version] as const)] : [])),
+  ),
+);
+
+const repos: Record<string, { stars: number; commits: number[] }> = activity.repos;
+
+const nonzero = Object.values(repos)
+  .flatMap(({ commits }) => commits)
+  .filter((count) => count > 0)
+  .toSorted((a, b) => a - b);
+
+const thresholds = [0.2, 0.4, 0.6, 0.8].map((p) => nonzero[Math.floor(p * nonzero.length)] ?? 0);
+const level = (count: number) => (count === 0 ? 0 : 1 + thresholds.filter((t) => count > t).length);
+
+const month = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+const months = activity.months.map((key) => month.format(new Date(`${key}-01`)));
+const format = new Intl.NumberFormat("en-US", { notation: "compact" });
+---
+
+<ol class="works">
+  {
+    projects.map(({ id, repo: slug, blurb, site }, index) => {
+      const repo = repos[id];
+      const stars = repo && repo.stars >= 10 ? `★ ${format.format(repo.stars)}` : "";
+      return (
+        <li data-readout>
+          <span class="index dot">{String(index + 1).padStart(2, "0")}</span>
+          <div class="text">
+            <a class="name" href={site ?? `https://github.com/${slug}`}>
+              {id}
+            </a>
+            {versions.has(id) && <span class="version">v{versions.get(id)}</span>}
+            <p>{blurb}</p>
+          </div>
+          <a class="meter" href={`https://github.com/${slug}`} aria-label={`${id} on GitHub`}>
+            {repo?.commits.map((count, i) => (
+              <span class="month" data-tip data-tip-text={`${count} · ${months[i]}`}>
+                {[5, 4, 3, 2, 1].map((n) => (
+                  <i data-on={n <= level(count) ? "" : undefined} />
+                ))}
+              </span>
+            ))}
+          </a>
+          <span class="stat" data-show="tipText" data-idle={stars}>
+            {stars}
+          </span>
+        </li>
+      );
+    })
+  }
+</ol>
+
+<style>
+  .works {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--line);
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 34px 1fr auto 88px;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .index {
+    align-self: start;
+    padding-top: 1px;
+    font-size: 13px;
+    color: var(--ink-3);
+    transition: color 160ms;
+  }
+
+  li:hover .index {
+    color: var(--seg);
+    text-shadow: var(--seg-glow);
+  }
+
+  .name {
+    font-weight: 500;
+  }
+
+  .name::after {
+    margin-left: 4px;
+    content: "↗";
+    font-size: 11px;
+    color: var(--ink-3);
+    opacity: 0;
+    transition: opacity 160ms;
+  }
+
+  .name:hover::after {
+    opacity: 1;
+  }
+
+  .version {
+    margin-left: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+
+  p {
+    margin: 2px 0 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  .meter {
+    display: flex;
+    gap: 2px;
+    padding: 5px 6px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--screen);
+    box-shadow: 0 1px 3px var(--screen-edge) inset;
+  }
+
+  .month {
+    display: grid;
+    gap: 1.5px;
+  }
+
+  i {
+    width: 5px;
+    height: 3px;
+    border-radius: 0.5px;
+    background: var(--seg-off);
+  }
+
+  i[data-on] {
+    background: var(--seg);
+    box-shadow: var(--seg-glow);
+    opacity: 0.85;
+  }
+
+  .month:hover i {
+    background: var(--seg);
+    opacity: 0.35;
+  }
+
+  .month:hover i[data-on] {
+    opacity: 1;
+  }
+
+  .stat {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-align: right;
+    white-space: nowrap;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (width < 600px) {
+    li {
+      grid-template-columns: 28px 1fr auto;
+      row-gap: 10px;
+    }
+
+    .text {
+      grid-column: 2 / span 2;
+    }
+
+    .meter {
+      grid-column: 2;
+      justify-self: start;
+    }
+
+    .stat {
+      grid-column: 3;
+    }
+  }
+</style>
