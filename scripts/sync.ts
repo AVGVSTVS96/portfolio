@@ -54,3 +54,5 @@ await Bun.write(
   "src/data/activity.json",
   `${JSON.stringify({ months, repos }, null, 2)}\n`
 );
+
+Bun.spawnSync(["oxfmt", "src/data/activity.json"]);
