@@ -27,9 +27,6 @@ const { title, description } = Astro.props;
         localStorage.getItem("finish") ??
         (matchMedia("(prefers-color-scheme: light)").matches ? "silver" : "black");
 
-      document.documentElement.dataset.code =
-        new URLSearchParams(location.search).get("code") ?? localStorage.getItem("code") ?? "sumi";
-
       addEventListener("pagereveal", (event) => {
         if (event.viewTransition) {
           document.documentElement.dataset.arrived = "";

@@ -1,6 +1,5 @@
 ---
 import { getCollection, render } from "astro:content";
-import CodeThemes from "../../components/CodeThemes.astro";
 import Base from "../../layouts/Base.astro";
 import "../../styles/code.css";
 
@@ -24,7 +23,6 @@ const date = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", y
       <Content />
     </div>
   </article>
-  <CodeThemes />
 </Base>
 
 <style>
