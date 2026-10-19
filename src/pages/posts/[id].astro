@@ -1,6 +1,8 @@
 ---
 import { getCollection, render } from "astro:content";
+import CodeThemes from "../../components/CodeThemes.astro";
 import Base from "../../layouts/Base.astro";
+import "../../styles/code.css";
 
 export const getStaticPaths = async () => {
   const posts = await getCollection("posts", ({ data }) => !data.url);
@@ -22,6 +24,7 @@ const date = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", y
       <Content />
     </div>
   </article>
+  <CodeThemes />
 </Base>
 
 <style>
@@ -90,22 +93,13 @@ const date = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", y
   }
 
   .prose :global(pre) {
-    overflow-x: auto;
     padding: 16px;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    background: var(--screen) !important;
-    box-shadow: 0 2px 6px var(--screen-edge) inset;
     font-family: var(--font-mono);
     font-size: 12.5px;
     line-height: 1.6;
   }
 
   .prose :global(pre span) {
-    color: var(--shiki-dark);
-  }
-
-  :global(:root[data-finish="silver"]) .prose :global(pre span) {
-    color: var(--shiki-light);
+    text-shadow: var(--code-glow);
   }
 </style>

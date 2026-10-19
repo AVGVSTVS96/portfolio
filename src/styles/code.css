@@ -1,0 +1,57 @@
+:root {
+  --code-bg: var(--screen);
+  --code-glow: none;
+}
+
+:root:not([data-code]),
+:root[data-code="vfd"] {
+  --code-fg: light-dark(#1d2620, #a3d6c8);
+  --code-punct: light-dark(#4c5a50, #5f8f82);
+  --code-comment: light-dark(#56635a, #4f7a6f);
+  --code-keyword: light-dark(#005e4f, #5cf2d0);
+  --code-string: light-dark(#7a4300, #ffb547);
+  --code-constant: light-dark(#9c2418, #ff7a68);
+  --code-function: light-dark(#0b1712, #e8fff8);
+  --code-type: light-dark(#1b4d85, #7cc6ff);
+  --code-property: light-dark(#2c5f26, #a6e89c);
+  --code-glow: 0 0 6px
+    light-dark(transparent, color-mix(in oklab, currentColor 45%, transparent));
+}
+
+:root[data-code="lcd"] {
+  --code-fg: light-dark(#262d27, #b9c0ba);
+  --code-punct: light-dark(#4f594f, #737b75);
+  --code-comment: light-dark(#5d675e, #646c66);
+  --code-keyword: light-dark(#070a08, #ffffff);
+  --code-string: light-dark(#0a5446, #6fe3c8);
+  --code-constant: light-dark(#0a5446, #6fe3c8);
+  --code-function: light-dark(#070a08, #f2f5f2);
+  --code-type: light-dark(#070a08, #f2f5f2);
+  --code-property: light-dark(#3a433b, #959d97);
+}
+
+:root[data-code="deck"] {
+  --code-bg: light-dark(#dcd7cd, var(--screen));
+  --code-fg: light-dark(#2b241b, #e6d6bd);
+  --code-punct: light-dark(#5e5244, #85745f);
+  --code-comment: light-dark(#665a4b, #76695a);
+  --code-keyword: light-dark(#a83207, #ff5a1f);
+  --code-string: light-dark(#7a4a00, #ffb547);
+  --code-constant: light-dark(#8c2d00, #ffd27a);
+  --code-function: light-dark(#17110a, #fff1dc);
+  --code-type: light-dark(#9c3d10, #ff8f57);
+  --code-property: light-dark(#4f4130, #cdb28a);
+}
+
+:root[data-code="pc98"] {
+  --code-bg: light-dark(#ebebe7, var(--screen));
+  --code-fg: light-dark(#1a1b22, #e4e4ea);
+  --code-punct: light-dark(#4f5160, #8a8c99);
+  --code-comment: light-dark(#4655b0, #7d8cff);
+  --code-keyword: light-dark(#006a8a, #55d8ff);
+  --code-string: light-dark(#246b10, #8cf07a);
+  --code-constant: light-dark(#a3168a, #ff6bd8);
+  --code-function: light-dark(#735600, #ffe45c);
+  --code-type: light-dark(#b3261e, #ff6b6b);
+  --code-property: light-dark(#323ea3, #aab5ff);
+}

@@ -1,5 +1,7 @@
 import { defineConfig, fontProviders } from "astro/config";
 
+import { codeTheme } from "./src/lib/code-theme";
+
 export default defineConfig({
   site: "https://bassim.build",
   fonts: [
@@ -26,9 +28,6 @@ export default defineConfig({
     },
   ],
   markdown: {
-    shikiConfig: {
-      themes: { light: "github-light", dark: "vesper" },
-      defaultColor: false,
-    },
+    shikiConfig: { theme: codeTheme },
   },
 });
