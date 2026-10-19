@@ -1,9 +1,9 @@
 ---
 const themes = [
-  { id: "vfd", name: "VFD" },
-  { id: "lcd", name: "LCD" },
-  { id: "deck", name: "Deck" },
-  { id: "pc98", name: "PC-98" },
+  { id: "sumi", name: "Sumi" },
+  { id: "nezumi", name: "Nezumi" },
+  { id: "champagne", name: "Champagne" },
+  { id: "ai", name: "Ai" },
 ];
 ---
 
@@ -40,10 +40,10 @@ const themes = [
     localStorage.setItem("finish", finish);
   };
 
-  show(root.dataset.code ?? "vfd");
+  show(root.dataset.code ?? "sumi");
 
   for (const button of buttons) {
-    button.addEventListener("click", () => show(button.dataset.code ?? "vfd"));
+    button.addEventListener("click", () => show(button.dataset.code ?? "sumi"));
   }
 
   document.querySelector(".codes [data-flip]")?.addEventListener("click", flip);
