@@ -31,6 +31,18 @@ for (const display of document.querySelectorAll<HTMLElement>(
   const slots = display.querySelectorAll<HTMLElement>("[data-show]");
   let picked: HTMLElement | undefined;
 
+  const render = () => {
+    for (const slot of slots) {
+      const key = slot.dataset.show ?? "";
+      write(
+        slot,
+        (picked ? picked.dataset[key] : undefined) ?? slot.dataset.idle ?? ""
+      );
+    }
+  };
+
+  display.addEventListener("refresh", render);
+
   const show = (source?: HTMLElement) => {
     if (source === picked) {
       return;
@@ -45,14 +57,7 @@ for (const display of document.querySelectorAll<HTMLElement>(
     }
 
     picked = source;
-
-    for (const slot of slots) {
-      const key = slot.dataset.show ?? "";
-      write(
-        slot,
-        (source ? source.dataset[key] : undefined) ?? slot.dataset.idle ?? ""
-      );
-    }
+    render();
   };
 
   display.addEventListener("keydown", (event) => {

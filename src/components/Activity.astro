@@ -3,7 +3,8 @@ import activity from "../data/activity.json";
 import Grouped from "./Grouped.astro";
 import { contributions, weeks } from "../lib/data";
 
-const HUES = 8;
+const HUES = 7;
+const ROWS = 24;
 const GAP = 3;
 const LEAD = 4;
 
@@ -59,20 +60,37 @@ const tail = ranked.slice(HUES);
 const at = (counts: number[], i: number) => counts[i] ?? 0;
 
 const series = [
-  ...ranked.slice(0, HUES).map(({ name, counts }, hue) => ({ name, counts, hue: `var(--c${hue})`, kind: "project" })),
-  { name: "private", counts: activity.private, hue: "var(--c-private)", kind: "private" },
+  ...ranked.slice(0, HUES).map(({ name, counts }, hue) => ({ name, counts, hue: `var(--c${hue})` })),
   {
     name: "other",
-    counts: days.map((_, i) => sum(tail.map(({ counts }) => at(counts, i)))),
+    counts: days.map((_, i) => at(activity.private, i) + sum(tail.map(({ counts }) => at(counts, i)))),
     hue: "var(--c-other)",
-    kind: "other",
   },
 ].filter(({ counts }) => sum(counts) > 0);
 
 const totals = days.map((_, i) => sum(series.map(({ counts }) => at(counts, i))));
 const peak = Math.max(...totals, 1);
-const step = [1, 10, 100, 1000].flatMap((p) => [1, 2, 5].map((m) => m * p)).find((s) => s * 3 >= peak) ?? peak;
-const grid = Array.from({ length: Math.floor(peak / step) }, (_, i) => (i + 1) * step);
+const unit = [1, 10, 100, 1000].flatMap((p) => [1, 2, 5].map((m) => m * p)).find((u) => u * ROWS >= peak) ?? peak;
+const rows = Math.ceil(peak / unit);
+const step = [2, 5, 10, 20].map((n) => n * unit).find((value) => value * 3 >= peak) ?? peak;
+const grid = Array.from({ length: Math.floor((rows * unit) / step) }, (_, i) => (i + 1) * step);
+
+const cells = days.map((_, i) => {
+  const total = at(totals, i);
+  const lit = total > 0 ? Math.max(1, Math.round(total / unit)) : 0;
+  const shares = series.map(({ counts }, s) => ({ s, exact: (at(counts, i) / (total || 1)) * lit }));
+  const given = shares.map(({ exact }) => Math.floor(exact));
+  const spare = lit - sum(given);
+
+  for (const { s } of shares.toSorted((a, b) => (b.exact % 1) - (a.exact % 1)).slice(0, spare)) {
+    given[s] = (given[s] ?? 0) + 1;
+  }
+
+  return [
+    ...given.flatMap((n, s) => Array.from({ length: n }, () => s)),
+    ...Array.from({ length: rows - lit }, () => -1),
+  ];
+});
 
 const ticks = new Map(
   days
@@ -86,15 +104,17 @@ const ticks = new Map(
     }),
 );
 
+const short16 = (name: string) => (name.length > 16 ? `${name.slice(0, 15)}…` : name);
+
 const others = (pick: (counts: number[]) => number) => {
-  const shown = tail
-    .map(({ name, counts }) => ({ name, count: pick(counts) }))
-    .filter(({ count }) => count > 0)
+  const shown = [{ name: "private", counts: activity.private }, ...tail]
+    .flatMap(({ name, counts }) => (pick(counts) > 0 ? [{ name, count: pick(counts) }] : []))
     .toSorted((a, b) => b.count - a.count);
 
-  const named = shown.slice(0, 3).map(({ name, count }) => `${name.length > 16 ? `${name.slice(0, 15)}…` : name}\u00A0${digits.format(count)}`);
+  const named = shown.slice(0, 3).map(({ name, count }) => `${short16(name)}\u00A0${digits.format(count)}`);
+  const more = shown.length > 3 ? ` and ${shown.length - 3} more` : "";
 
-  return shown.length > 3 ? [...named, `${shown.length - 3}\u00A0more`].join(" · ") : named.join(" · ");
+  return named.length > 0 ? `Other: ${named.join(", ")}${more}` : "";
 };
 ---
 
@@ -193,11 +213,11 @@ const others = (pick: (counts: number[]) => number) => {
         <span class="date label" data-show="date" data-idle=""></span>
         <span class="date label" data-show="day" data-idle=""></span>
       </p>
-      <div class="plot" style={`--peak: ${peak}`}>
+      <div class="plot" style={`--rows: ${rows}`}>
         {
           grid.map((value) => (
-            <span class="rule" style={`--at: ${value / peak}`}>
-              <span class="label">{digits.format(value)}</span>
+            <span class="rule label" style={`--at: ${value / unit}`}>
+              {digits.format(value)}
             </span>
           ))
         }
@@ -217,18 +237,13 @@ const others = (pick: (counts: number[]) => number) => {
                 )}
               >
                 <span class="bar">
-                  <span class="stack" style={`height: ${(at(totals, i) / peak) * 100}%`}>
-                    {series.map(({ counts, hue, kind }, s) =>
-                      at(counts, i) > 0 ? (
-                        <span
-                          class="seg"
-                          data-kind={kind}
-                          data-series={s}
-                          style={`--hue: ${hue}; flex-grow: ${at(counts, i)}`}
-                        />
-                      ) : null,
-                    )}
-                  </span>
+                  {cells[i]?.map((s) =>
+                    s < 0 ? (
+                      <span class="seg" />
+                    ) : (
+                      <span class="seg" data-series={s} style={`--hue: ${series[s]?.hue}`} />
+                    ),
+                  )}
                 </span>
                 <span class="tick" data-end={ticks.get(i)?.end ? "" : undefined}>
                   {ticks.has(i) && <span class="label">{ticks.get(i)?.text}</span>}
@@ -240,9 +255,9 @@ const others = (pick: (counts: number[]) => number) => {
       </div>
       <ul class="legend">
         {
-          series.map(({ name, counts, hue, kind }, s) => (
+          series.map(({ name, counts, hue }, s) => (
             <li style={`--hue: ${hue}`}>
-              <button type="button" data-kind={kind} data-series={s} aria-pressed="false">
+              <button type="button" data-series={s} data-name={name} data-total={digits.format(sum(counts))} aria-pressed="false">
                 <span class="swatch" />
                 <span class="label name">{name}</span>
                 <span class="label value" data-show={`s${s}`} data-idle={digits.format(sum(counts))}>
@@ -253,11 +268,8 @@ const others = (pick: (counts: number[]) => number) => {
           ))
         }
       </ul>
-      <p class="members">
-        <span class="swatch" style="--hue: var(--c-other)" />
-        <span class="label" data-show="others" data-idle={others(sum)}>
-          {others(sum)}
-        </span>
+      <p class="members label" data-show="others" data-idle={others(sum)}>
+        {others(sum)}
       </p>
     </div>
   </figure>
@@ -265,13 +277,27 @@ const others = (pick: (counts: number[]) => number) => {
 
 <script>
   const wire = (root: HTMLElement) => {
-    const segs = root.querySelectorAll<HTMLElement>(".seg");
+    const segs = root.querySelectorAll<HTMLElement>(".seg[data-series]");
     const keys = root.querySelectorAll<HTMLButtonElement>(".legend button");
+    const count = root.querySelector<HTMLElement>(".count");
+    const unit = root.querySelector<HTMLElement>(".unit");
+    const base = { count: { ...count?.dataset }, unit: { ...unit?.dataset } };
 
     const solo = (series = root.dataset.solo) => {
+      const key = [...keys].find((each) => each.dataset.series === series);
+
       for (const mark of [...segs, ...keys]) {
-        mark.toggleAttribute("data-dim", series !== undefined && mark.dataset.series !== series);
+        mark.toggleAttribute("data-dim", key !== undefined && mark.dataset.series !== series);
       }
+
+      if (count && unit) {
+        count.dataset.show = key ? `s${series}` : base.count.show;
+        count.dataset.idle = key ? key.dataset.total : base.count.idle;
+        unit.dataset.show = key ? "solo" : base.unit.show;
+        unit.dataset.idle = key ? key.dataset.name : base.unit.idle;
+      }
+
+      root.dispatchEvent(new Event("refresh"));
     };
 
     for (const key of keys) {
@@ -303,8 +329,24 @@ const others = (pick: (counts: number[]) => number) => {
     }
   };
 
+  const echo = (activity: HTMLElement) => {
+    const tips = [...activity.querySelectorAll<HTMLElement>("[data-tip]")];
+
+    new MutationObserver(() => {
+      const picked = new Set(tips.flatMap((tip) => (tip.dataset.picked === undefined ? [] : [tip.dataset.date])));
+
+      for (const tip of tips) {
+        tip.toggleAttribute("data-echo", tip.dataset.picked === undefined && picked.has(tip.dataset.date));
+      }
+    }).observe(activity, { attributeFilter: ["data-picked"], subtree: true });
+  };
+
   for (const root of document.querySelectorAll<HTMLElement>("[data-solo-root]")) {
     wire(root);
+  }
+
+  for (const activity of document.querySelectorAll<HTMLElement>(".activity")) {
+    echo(activity);
   }
 </script>
 
@@ -312,18 +354,14 @@ const others = (pick: (counts: number[]) => number) => {
   .activity {
     --c0: #4490fe;
     --c1: #fb9d59;
-    --c2: #c167fb;
-    --c3: #4ee11b;
-    --c4: #23dafc;
-    --c5: #ff1459;
-    --c6: #fd95dc;
-    --c7: #f4d916;
-    --c-other: color-mix(in oklab, var(--ink) 30%, var(--screen));
-    --c-private: repeating-linear-gradient(
-      -45deg,
-      color-mix(in oklab, var(--ink) 55%, var(--screen)) 0 1.5px,
-      transparent 1.5px 4px
-    );
+    --c2: #ff1459;
+    --c3: #c167fb;
+    --c4: #4ee11b;
+    --c5: #fd95dc;
+    --c6: #f4d916;
+    --lit: var(--seg);
+    --unlit: color-mix(in oklab, var(--lit) 8%, transparent);
+    --c-other: color-mix(in oklab, var(--lit) 38%, transparent);
     --gutter: 28px;
 
     display: grid;
@@ -333,18 +371,14 @@ const others = (pick: (counts: number[]) => number) => {
   :root[data-finish="silver"] .activity {
     --c0: #0248ca;
     --c1: #d66919;
-    --c2: #6f049f;
-    --c3: #118d29;
-    --c4: #0b7a9a;
-    --c5: #b00727;
-    --c6: #e10195;
-    --c7: #7a5c00;
-    --c-other: color-mix(in oklab, var(--ink) 22%, var(--screen));
-    --c-private: repeating-linear-gradient(
-      -45deg,
-      color-mix(in oklab, var(--ink) 70%, var(--screen)) 0 1.5px,
-      transparent 1.5px 4px
-    );
+    --c2: #b00727;
+    --c3: #6f049f;
+    --c4: #118d29;
+    --c5: #e10195;
+    --c6: #7a5c00;
+    --lit: #0c6152;
+    --unlit: color-mix(in oklab, var(--lit) 7%, transparent);
+    --c-other: color-mix(in oklab, var(--lit) 42%, transparent);
   }
 
   figure {
@@ -395,6 +429,7 @@ const others = (pick: (counts: number[]) => number) => {
   }
 
   .count {
+    min-width: 3ch;
     font-size: 32px;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -402,6 +437,10 @@ const others = (pick: (counts: number[]) => number) => {
 
   .unit {
     opacity: 0.6;
+  }
+
+  .count:empty::before {
+    content: "0";
   }
 
   .count :global(.comma) {
@@ -483,7 +522,7 @@ const others = (pick: (counts: number[]) => number) => {
     position: relative;
     aspect-ratio: 1;
     border-radius: clamp(1px, 0.3cqi, 2px);
-    background: color-mix(in oklab, var(--seg) calc(var(--glow, 0.1) * 100%), var(--seg-off));
+    background: color-mix(in oklab, var(--lit) calc(var(--glow, 0.1) * 100%), var(--seg-off));
     outline: 1.5px solid transparent;
     outline-offset: 1px;
     transition: outline-color 120ms;
@@ -549,30 +588,23 @@ const others = (pick: (counts: number[]) => number) => {
 
   .plot {
     position: relative;
-    --height: clamp(120px, 26cqi, 168px);
+    --height: clamp(132px, 28cqi, 176px);
 
     padding-left: var(--gutter);
   }
 
   .rule {
     position: absolute;
-    right: 0;
-    bottom: calc(22px + var(--at) * var(--height));
-    left: var(--gutter);
-    border-top: 1px dashed color-mix(in oklab, var(--seg) 14%, transparent);
-  }
-
-  .rule .label {
-    position: absolute;
-    left: calc(var(--gutter) * -1);
-    translate: 0 -50%;
+    bottom: calc(22px + var(--at) / var(--rows) * var(--height));
+    left: 0;
     font-size: 9px;
     opacity: 0.5;
+    translate: 0 50%;
   }
 
   .chart {
     display: grid;
-    --gap: clamp(2px, 1cqi, 6px);
+    --gap: clamp(2px, 0.9cqi, 5px);
 
     grid-template-columns: repeat(var(--days), 1fr);
     margin-inline: calc(var(--gap) / -2);
@@ -586,43 +618,43 @@ const others = (pick: (counts: number[]) => number) => {
 
   .bar {
     display: flex;
-    align-items: end;
-    background: linear-gradient(var(--seg-off), var(--seg-off)) bottom / 100% 1px no-repeat;
-  }
-
-  .stack {
-    display: flex;
     flex-direction: column-reverse;
-    gap: 1px;
-    width: 100%;
-    border-radius: 2px 2px 0 0;
+    gap: 1.5px;
+    border-radius: 2px;
     outline: 1.5px solid transparent;
-    outline-offset: 1.5px;
+    outline-offset: 2px;
     transition: outline-color 120ms;
   }
 
-  .day[data-picked] .stack {
-    min-height: 2px;
+  .day[data-picked] .bar {
     outline-color: var(--ink);
   }
 
-  .seg {
-    flex-basis: 0;
-    min-height: 1px;
-    background: var(--hue);
-    transition: opacity 140ms;
+  .day[data-echo] .bar,
+  .cell[data-echo] {
+    outline-color: color-mix(in oklab, var(--ink) 45%, transparent);
   }
 
-  .seg:last-child {
-    border-radius: 2px 2px 0 0;
+  .seg {
+    flex: 1;
+    order: 2;
+    border-radius: 1px;
+    background: var(--unlit);
+    transition: background-color 160ms;
+  }
+
+  .seg[data-series] {
+    order: 0;
+    background: var(--hue);
   }
 
   .seg[data-dim] {
-    opacity: 0.18;
+    order: 1;
+    background: var(--unlit);
   }
 
-  :global(:root:not([data-finish="silver"])) .seg[data-kind="project"] {
-    box-shadow: 0 0 6px color-mix(in srgb, var(--hue) 35%, transparent);
+  :global(:root:not([data-finish="silver"])) .seg[data-series]:not([data-dim]) {
+    box-shadow: 0 0 4px color-mix(in srgb, var(--hue) 40%, transparent);
   }
 
   .tick {
@@ -703,23 +735,11 @@ const others = (pick: (counts: number[]) => number) => {
   }
 
   .members {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
     min-height: 1.6em;
     margin: 14px 0 0;
-    font-size: 10px;
-    line-height: 1.6;
-  }
-
-  .members .label {
     line-height: 1.6;
     white-space: normal;
     opacity: 0.55;
-  }
-
-  .members .swatch {
-    translate: 0 -1px;
   }
 
   @container (width < 480px) {
