@@ -105,8 +105,16 @@ const contributions = [
   ),
   ...collection(paged("pullRequestReviewContributions", repository)),
   ...collection(paged("issueContributions", `issue { ${repository} }`)),
-  ...collection(paged("repositoryContributions", repository)),
 ];
+
+const [calendar] = gh(
+  [
+    "graphql",
+    "-f",
+    `query=query { user(login: "${USER}") { contributionsCollection { contributionCalendar { totalContributions weeks { contributionDays { date contributionCount contributionLevel } } } } } }`,
+  ],
+  `.data.user.contributionsCollection.contributionCalendar | {total: .totalContributions, days: [.weeks[].contributionDays[] | {date, count: .contributionCount, level: (.contributionLevel as $level | ["NONE", "FIRST_QUARTILE", "SECOND_QUARTILE", "THIRD_QUARTILE", "FOURTH_QUARTILE"] | index($level))}]} | tojson`
+);
 
 const daily: Record<string, number[]> = {};
 
@@ -131,9 +139,11 @@ console.log(
   `last ${DAYS} days: ${sum(Object.values(ranked).flat())} public contributions`
 );
 
+const year: unknown = JSON.parse(calendar ?? "null");
+
 await Bun.write(
   "src/data/activity.json",
-  `${JSON.stringify({ months, days, repos, daily: ranked }, null, 2)}\n`
+  `${JSON.stringify({ months, days, repos, daily: ranked, calendar: year }, null, 2)}\n`
 );
 
 Bun.spawnSync(["bunx", "oxfmt", "src/data/activity.json"]);
