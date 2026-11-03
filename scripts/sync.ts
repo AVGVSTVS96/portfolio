@@ -32,18 +32,6 @@ const months = Array.from({ length: MONTHS }, (_, i) =>
 
 const since = `${months[0]}-01T00:00:00Z`;
 
-const days = Array.from({ length: DAYS }, (_, i) =>
-  new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate() - (DAYS - 1 - i)
-    )
-  )
-    .toISOString()
-    .slice(0, 10)
-);
-
 const repos = Object.fromEntries(
   projects.map(({ id, repo, also = [] }) => {
     const dates = [repo, ...also].flatMap((slug) =>
@@ -81,33 +69,7 @@ const project = (slug: string) => {
   return owners.get(slug.toLowerCase()) ?? (ids.has(base) ? base : name);
 };
 
-const collection = (fields: string) =>
-  gh(
-    [
-      "graphql",
-      "-f",
-      `query=query${fields.includes("$endCursor") ? "($endCursor: String)" : ""} { user(login: "${USER}") { contributionsCollection(from: "${days[0]}T00:00:00Z") { ${fields} } } }`,
-    ],
-    `.data.user.contributionsCollection | .[] | (.nodes? // [.[] | .repository as $repository | .contributions.nodes[] | .repository = $repository]) | .[] | "\\((.repository // .pullRequest.repository // .issue.repository).nameWithOwner) \\(.occurredAt) \\(.commitCount // 1)"`
-  );
-
-const repository = "repository { nameWithOwner }";
-
-const paged = (connection: string, node: string) =>
-  `${connection}(first: 100, after: $endCursor) { nodes { occurredAt ${node} } pageInfo { hasNextPage endCursor } }`;
-
-const contributions = [
-  ...collection(
-    `commitContributionsByRepository(maxRepositories: 100) { ${repository} contributions(first: 100) { nodes { occurredAt commitCount } } }`
-  ),
-  ...collection(
-    paged("pullRequestContributions", `pullRequest { ${repository} }`)
-  ),
-  ...collection(paged("pullRequestReviewContributions", repository)),
-  ...collection(paged("issueContributions", `issue { ${repository} }`)),
-];
-
-const [calendar] = gh(
+const [calendar = "null"] = gh(
   [
     "graphql",
     "-f",
@@ -116,34 +78,90 @@ const [calendar] = gh(
   `.data.user.contributionsCollection.contributionCalendar | {total: .totalContributions, days: [.weeks[].contributionDays[] | {date, count: .contributionCount, level: (.contributionLevel as $level | ["NONE", "FIRST_QUARTILE", "SECOND_QUARTILE", "THIRD_QUARTILE", "FOURTH_QUARTILE"] | index($level))}]} | tojson`
 );
 
+const year = z
+  .object({
+    total: z.number(),
+    days: z.array(
+      z.object({ date: z.string(), count: z.number(), level: z.number() })
+    ),
+  })
+  .parse(JSON.parse(calendar));
+
+const days = year.days.slice(-DAYS).map(({ date }) => date);
+
+const zone = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Los_Angeles",
+  timeZoneName: "longOffset",
+});
+
+const at = (date: string, time: string) =>
+  `${date}T${time}${zone.format(new Date(`${date}T12:00:00Z`)).split("GMT")[1] || "Z"}`;
+
+const byRepository = (connection: string) =>
+  `${connection}(maxRepositories: 100) { repository { nameWithOwner } contributions { totalCount } }`;
+
+const windows = days.map(
+  (date, i) =>
+    `d${i}: contributionsCollection(from: "${at(date, "00:00:00")}", to: "${at(date, "23:59:59")}") { restrictedContributionsCount ${[
+      "commitContributionsByRepository",
+      "pullRequestContributionsByRepository",
+      "pullRequestReviewContributionsByRepository",
+      "issueContributionsByRepository",
+    ]
+      .map(byRepository)
+      .join(
+        " "
+      )} repositoryContributions(first: 100) { nodes { repository { nameWithOwner } } } }`
+);
+
+const lines = gh(
+  [
+    "graphql",
+    "-f",
+    `query=query { user(login: "${USER}") { ${windows.join(" ")} } }`,
+  ],
+  `.data.user | to_entries[] | (.key | ltrimstr("d")) as $day | .value | ("\\($day) private \\(.restrictedContributionsCount)", ((.commitContributionsByRepository + .pullRequestContributionsByRepository + .pullRequestReviewContributionsByRepository + .issueContributionsByRepository)[] | "\\($day) \\(.repository.nameWithOwner) \\(.contributions.totalCount)"), (.repositoryContributions.nodes[] | "\\($day) \\(.repository.nameWithOwner) 1"))`
+);
+
 const daily: Record<string, number[]> = {};
 
-for (const line of contributions) {
-  const [slug = "", at = "", count = "1"] = line.split(" ");
-  const day = days.indexOf(local.format(new Date(at)));
-
-  if (day !== -1) {
-    const counts = daily[project(slug)] ?? days.map(() => 0);
-    counts[day] = (counts[day] ?? 0) + Number(count);
-    daily[project(slug)] = counts;
-  }
+for (const line of lines) {
+  const [day = "", slug = "", count = "0"] = line.split(" ");
+  const name = slug === "private" ? slug : project(slug);
+  const counts = daily[name] ?? days.map(() => 0);
+  counts[Number(day)] = (counts[Number(day)] ?? 0) + Number(count);
+  daily[name] = counts;
 }
 
 const sum = (counts: number[]) => counts.reduce((a, b) => a + b, 0);
 
+for (const [i, date] of days.entries()) {
+  const counted = sum(Object.values(daily).map((counts) => counts[i] ?? 0));
+  const entry = year.days.find((day) => day.date === date);
+
+  if (entry && entry.count !== counted) {
+    console.log(
+      `${date}: calendar said ${entry.count}, its projects add up to ${counted}`
+    );
+    entry.count = counted;
+  }
+}
+
+year.total = sum(year.days.map(({ count }) => count));
+
+const { private: hidden = days.map(() => 0), ...named } = daily;
+
 const ranked = Object.fromEntries(
-  Object.entries(daily).toSorted(([, a], [, b]) => sum(b) - sum(a))
+  Object.entries(named).toSorted(([, a], [, b]) => sum(b) - sum(a))
 );
 
 console.log(
-  `last ${DAYS} days: ${sum(Object.values(ranked).flat())} public contributions`
+  `last ${DAYS} days: ${sum(Object.values(daily).flat())} contributions, ${sum(hidden)} private`
 );
-
-const year: unknown = JSON.parse(calendar ?? "null");
 
 await Bun.write(
   "src/data/activity.json",
-  `${JSON.stringify({ months, days, repos, daily: ranked, calendar: year }, null, 2)}\n`
+  `${JSON.stringify({ months, days, repos, daily: ranked, private: hidden, calendar: year }, null, 2)}\n`
 );
 
 Bun.spawnSync(["bunx", "oxfmt", "src/data/activity.json"]);
