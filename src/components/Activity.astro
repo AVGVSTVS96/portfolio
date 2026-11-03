@@ -59,12 +59,12 @@ const tail = ranked.slice(HUES);
 const series = [
   ...ranked.slice(0, HUES).map(({ name, counts }, hue) => ({ name, counts, hue: String(hue) })),
   {
-    name: `${tail.length} more ${plural(tail.length, "repo")}`,
+    name: `${tail.length} ${plural(tail.length, "other")}`,
     counts: days.map((_, i) => sum(tail.map(({ counts }) => counts[i] ?? 0))),
     hue: "more",
   },
   {
-    name: "private repos",
+    name: "private",
     counts: activity.days.map((day, i) => Math.max(0, (calendar.get(day) ?? 0) - sum(ranked.map(({ counts }) => counts[i] ?? 0)))),
     hue: "private",
   },
