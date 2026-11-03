@@ -1,0 +1,63 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Not found · Bassim Shahidy" description="Nothing lives at this address.">
+  <main>
+    <div class="screen">
+      <span class="code dot lit">404</span>
+      <span class="label">No signal</span>
+    </div>
+    <h1>Nothing lives at this address.</h1>
+    <a class="home label" href="/">← Bassim Shahidy</a>
+  </main>
+</Base>
+
+<style>
+  main {
+    margin-top: 56px;
+  }
+
+  main > * {
+    animation: var(--enter);
+    animation-delay: calc(sibling-index() * 70ms);
+  }
+
+  .screen {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 20px;
+  }
+
+  .code {
+    font-size: 32px;
+    line-height: 1;
+  }
+
+  .screen .label {
+    color: var(--seg);
+    opacity: 0.6;
+  }
+
+  h1 {
+    margin: 28px 0 20px;
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .home {
+    display: inline-block;
+    padding-block: 12px;
+    transition: color 160ms;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .home:hover {
+      color: var(--seg);
+    }
+  }
+</style>

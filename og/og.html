@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en" data-finish="black">
+  <head>
+    <meta charset="utf-8" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Geist:wght@400..600&family=Geist+Mono:wght@500&display=block"
+    />
+    <link rel="stylesheet" href="/src/styles/global.css" />
+    <style>
+      :root {
+        --font-sans: "Geist", sans-serif;
+        --font-mono: "Geist Mono", monospace;
+        --font-dot: "DotGothic16", monospace;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        width: 1200px;
+        height: 630px;
+        min-height: 0;
+        margin: 0;
+        padding: 56px 72px 64px;
+        overflow: hidden;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      header .label {
+        font-size: 15px;
+        color: var(--ink-2);
+      }
+
+      .led {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--led);
+        box-shadow: 0 0 12px var(--led);
+      }
+
+      .kana {
+        margin: 52px 0 6px;
+        font-size: 26px;
+        color: var(--ink-3);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 76px;
+        font-weight: 500;
+        line-height: 1.05;
+        letter-spacing: -0.025em;
+      }
+
+      .lede {
+        margin: 18px 0 0;
+        font-size: 28px;
+        color: var(--ink-2);
+      }
+
+      .screen {
+        display: grid;
+        grid-auto-columns: 1fr;
+        grid-auto-flow: column;
+        grid-template-rows: repeat(7, 1fr);
+        gap: 4px;
+        margin-top: auto;
+        padding: 18px 20px;
+      }
+
+      .cell {
+        aspect-ratio: 1;
+        border-radius: 2px;
+        background: color-mix(
+          in oklab,
+          var(--seg) calc(var(--glow) * 100%),
+          var(--screen)
+        );
+      }
+
+      .cell[data-level="4"] {
+        box-shadow: var(--seg-glow);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="led"></span>
+      <span class="label">BS-96</span>
+    </header>
+    <p class="kana dot">バシム・シャヒディ</p>
+    <h1>Bassim Shahidy</h1>
+    <p class="lede">
+      I build dev tools, interfaces and a lot of open-source projects.
+    </p>
+    <div class="screen"></div>
+    <script type="module">
+      const { calendar } = await (
+        await fetch("/src/data/activity.json")
+      ).json();
+      const { days } = calendar;
+      const counts = days
+        .map((day) => day.count)
+        .filter(Boolean)
+        .sort((a, b) => a - b);
+      const quartile = (q) => counts[Math.floor((counts.length - 1) * q)];
+      const cuts = [quartile(0.25), quartile(0.5), quartile(0.75)];
+      const glow = [0.07, 0.36, 0.58, 0.8, 1];
+      const screen = document.querySelector(".screen");
+      const lead = new Date(days[0].date).getUTCDay();
+
+      for (let index = 0; index < lead; index += 1) {
+        screen.append(document.createElement("span"));
+      }
+
+      for (const { count } of days) {
+        const level =
+          count === 0 ? 0 : 1 + cuts.filter((cut) => count > cut).length;
+        const cell = document.createElement("span");
+        cell.className = "cell";
+        cell.dataset.level = level;
+        cell.style.setProperty("--glow", glow[level]);
+        screen.append(cell);
+      }
+    </script>
+  </body>
+</html>

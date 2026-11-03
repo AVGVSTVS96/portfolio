@@ -1,4 +1,4 @@
-<button class="finish" type="button" aria-label="Switch finish between black and silver">
+<button class="finish" type="button" role="switch" aria-checked="false" aria-label="Silver finish">
   <span class="label">Black</span>
   <span class="track" aria-hidden="true"><span class="knob"></span></span>
   <span class="label">Silver</span>
@@ -8,11 +8,20 @@
   const root = document.documentElement;
   const button = document.querySelector<HTMLElement>(".finish");
   const track = button?.querySelector<HTMLElement>(".track");
+  const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+
+  const show = () => {
+    button?.setAttribute("aria-checked", String(root.dataset.finish === "silver"));
+    themeColor?.setAttribute("content", getComputedStyle(root).getPropertyValue("--bg"));
+  };
 
   const apply = (finish: string) => {
     root.dataset.finish = finish;
     localStorage.setItem("finish", finish);
+    show();
   };
+
+  show();
 
   button?.addEventListener("click", async () => {
     const finish = root.dataset.finish === "silver" ? "black" : "silver";
@@ -50,6 +59,7 @@
 
 <style>
   .finish {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 10px;
@@ -57,6 +67,12 @@
     border: 0;
     background: none;
     cursor: pointer;
+  }
+
+  .finish::before {
+    position: absolute;
+    inset: -9px -8px;
+    content: "";
   }
 
   .track {
