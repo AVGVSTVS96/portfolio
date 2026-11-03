@@ -4,7 +4,6 @@ import { contributions, weeks } from "../lib/data";
 
 const HUES = 7;
 
-const format = new Intl.NumberFormat("en-US");
 const digits = new Intl.NumberFormat("en-US", { useGrouping: false });
 const month = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
 const short = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -13,9 +12,9 @@ const long = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", 
 const plural = (count: number, word: string) => (count === 1 ? word : `${word}s`);
 const sum = (counts: number[]) => counts.reduce((a, b) => a + b, 0);
 
-const total = digits.format(contributions.total.lastYear);
 const padding = 7 - (weeks[0]?.length ?? 7);
-const half = Math.ceil(weeks.length / 2);
+const split = Math.floor(weeks.length / 2);
+const columns = weeks.length - split;
 
 const last = (week: number) => new Date(weeks[week]?.at(-1)?.date ?? "");
 const startsMonth = (week: number) => last(week).getUTCDate() <= 7;
@@ -46,25 +45,36 @@ const bandLabels = (first: number, end: number, mode: string) => {
 
 const labels = [
   ...bandLabels(0, weeks.length, "wide"),
-  ...bandLabels(0, half, "narrow"),
-  ...bandLabels(half, weeks.length, "narrow"),
+  ...bandLabels(0, split, "narrow"),
+  ...bandLabels(split, weeks.length, "narrow"),
 ];
 
+const calendar = new Map(contributions.contributions.map(({ date, count }) => [date, count]));
 const days = activity.days.map((entry) => new Date(entry));
+const daily: Record<string, number[]> = activity.daily;
 
-const ranked = Object.entries(activity.repos)
-  .map(([id, { daily }]) => ({ id, daily, total: sum(daily) }))
-  .filter(({ total: commits }) => commits > 0)
-  .toSorted((a, b) => b.total - a.total);
+const ranked = Object.entries(daily).map(([name, counts]) => ({ name, counts }));
+const tail = ranked.slice(HUES);
 
-const fold = ranked.length > HUES;
-const projects = fold ? ranked.slice(0, HUES) : ranked;
-const tail = fold ? ranked.slice(HUES) : [];
-const rest = days.map((_, i) => sum(tail.map(({ daily }) => daily[i] ?? 0)));
+const series = [
+  ...ranked.slice(0, HUES).map(({ name, counts }, hue) => ({ name, counts, hue: String(hue) })),
+  {
+    name: `${tail.length} more ${plural(tail.length, "repo")}`,
+    counts: days.map((_, i) => sum(tail.map(({ counts }) => counts[i] ?? 0))),
+    hue: "more",
+  },
+  {
+    name: "private repos",
+    counts: activity.days.map((day, i) => Math.max(0, (calendar.get(day) ?? 0) - sum(ranked.map(({ counts }) => counts[i] ?? 0)))),
+    hue: "private",
+  },
+].filter(({ counts }) => sum(counts) > 0);
 
-const totals = days.map((_, i) => sum(ranked.map(({ daily }) => daily[i] ?? 0)));
+const totals = days.map((_, i) => sum(series.map(({ counts }) => counts[i] ?? 0)));
 const peak = Math.max(...totals, 1);
-const commits = sum(totals);
+const step = [1, 10, 100, 1000].flatMap((p) => [1, 2, 5].map((m) => m * p)).find((s) => s * 3 >= peak) ?? peak;
+const scale = Math.max(peak, Math.floor(peak / step) * step);
+const grid = Array.from({ length: Math.floor(scale / step) }, (_, i) => (i + 1) * step);
 
 const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && (days.length - 1 - i) % 7 === 0)));
 ---
@@ -75,17 +85,20 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     <div
       class="screen"
       data-readout
-      data-link="activity"
       data-boot
       tabindex="0"
       aria-label="Contributions in the last 12 months. Arrow keys step through days."
     >
       <p class="readout" aria-live="polite">
-        <span class="count dot lit" data-show="count" data-idle={total}>{total}</span>
+        <span class="count dot lit"
+          ><span data-show="count" data-idle={digits.format(contributions.total.lastYear)}
+            >{digits.format(contributions.total.lastYear)}</span
+          ></span
+        >
         <span class="unit label" data-show="unit" data-idle="contributions">contributions</span>
         <span class="date dot lit" data-show="date" data-idle=""></span>
       </p>
-      <div class="calendar" style={`--weeks: ${weeks.length}; --half: ${half}`}>
+      <div class="calendar" style={`--weeks: ${weeks.length}; --columns: ${columns}; --lead: ${columns - split + 1}`}>
         {
           weeks.map((week, index) => (
             <div class="week">
@@ -109,7 +122,6 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
                   class="cell"
                   data-level={entry.level}
                   data-tip
-                  data-day={entry.date}
                   data-count={digits.format(entry.count)}
                   data-unit={plural(entry.count, "contribution")}
                   data-date={long.format(new Date(entry.date))}
@@ -127,143 +139,74 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     <div
       class="screen"
       data-readout
-      data-link="activity"
       data-boot
       tabindex="0"
-      aria-label="Commits per project in the last 30 days. Arrow keys step through days."
+      aria-label="Contributions per project in the last 30 days. Arrow keys step through days."
     >
       <p class="readout" aria-live="polite">
-        <span class="count dot lit" data-show="count" data-idle={digits.format(commits)}>{digits.format(commits)}</span>
-        <span class="unit label" data-show="unit" data-idle="commits">commits</span>
+        <span class="count dot lit"><span data-show="count" data-idle={digits.format(sum(totals))}>{digits.format(sum(totals))}</span></span>
+        <span class="unit label" data-show="unit" data-idle="contributions">contributions</span>
         <span class="date dot lit" data-show="date" data-idle=""></span>
       </p>
-      <div class="chart" style={`--days: ${days.length}`}>
+      <div class="plot">
         {
-          days.map((entry, i) => (
-            <span
-              class="day"
-              data-tip
-              data-day={activity.days[i]}
-              data-count={digits.format(totals[i] ?? 0)}
-              data-unit={plural(totals[i] ?? 0, "commit")}
-              data-date={long.format(entry)}
-              data-rest={rest[i] ? format.format(rest[i]) : ""}
-              {...Object.fromEntries(projects.map(({ daily }, p) => [`data-p${p}`, daily[i] ? format.format(daily[i]) : ""]))}
-            >
-              <span class="bar">
-                {(totals[i] ?? 0) > 0 && (
-                  <span class="fill" style={`height: ${((totals[i] ?? 0) / peak) * 100}%`}>
-                    {projects.map(({ daily }, p) =>
-                      daily[i] ? <span class="seg" data-project={p} data-hue={p} style={`flex-grow: ${daily[i]}`} /> : null,
-                    )}
-                    {(rest[i] ?? 0) > 0 && (
-                      <span class="seg" data-project="rest" data-hue="rest" style={`flex-grow: ${rest[i]}`} />
-                    )}
-                  </span>
-                )}
-              </span>
-              <span class="tick">{ticks.has(i) && <span class="label">{short.format(entry)}</span>}</span>
+          grid.map((value) => (
+            <span class="rule" style={`--at: ${value / scale}`}>
+              <span class="label">{digits.format(value)}</span>
             </span>
           ))
         }
+        <div class="chart" style={`--days: ${days.length}`}>
+          {
+            days.map((entry, i) => (
+              <span
+                class="day"
+                data-tip
+                data-count={digits.format(totals[i] ?? 0)}
+                data-unit={plural(totals[i] ?? 0, "contribution")}
+                data-date={long.format(entry)}
+                {...Object.fromEntries(series.map(({ counts }, s) => [`data-s${s}`, counts[i] ? digits.format(counts[i]) : ""]))}
+              >
+                <span class="bar">
+                  {series.map(({ counts, hue }) => {
+                    const share = ((counts[i] ?? 0) / scale) * 100;
+                    return share > 0 ? <span class="seg" data-hue={hue} data-split={share >= 3 ? "" : undefined} style={`height: ${share}%`} /> : null;
+                  })}
+                </span>
+                <span class="tick">{ticks.has(i) && <span class="label">{short.format(entry)}</span>}</span>
+              </span>
+            ))
+          }
+        </div>
       </div>
       <ul class="legend">
         {
-          projects.map(({ id, total: count }, p) => (
-            <li data-hue={p}>
-              <button type="button" data-solo={p} aria-pressed="false">
-                <span class="swatch" />
-                <span class="label name">{id}</span>
-                <span class="label value" data-show={`p${p}`} data-idle={format.format(count)}>
-                  {format.format(count)}
-                </span>
-              </button>
+          series.map(({ name, counts, hue }, s) => (
+            <li data-hue={hue}>
+              <span class="swatch" />
+              <span class="label name">{name}</span>
+              <span class="label value" data-show={`s${s}`} data-idle={digits.format(sum(counts))}>
+                {digits.format(sum(counts))}
+              </span>
             </li>
           ))
-        }
-        {
-          tail.length > 0 && (
-            <li class="others" data-hue="rest">
-              <button type="button" data-solo="rest" aria-pressed="false">
-                <span class="swatch" />
-                <span class="label name">
-                  {tail.map(({ id }, i) => (
-                    <>
-                      {i > 0 && ", "}
-                      <span class="nowrap">{id}</span>
-                    </>
-                  ))}
-                </span>
-                <span class="label value" data-show="rest" data-idle={format.format(sum(rest))}>
-                  {format.format(sum(rest))}
-                </span>
-              </button>
-            </li>
-          )
         }
       </ul>
     </div>
   </figure>
 </div>
 
-<script>
-  const at = (event: Event) =>
-    event.target instanceof Element ? event.target.closest<HTMLElement>("[data-solo]")?.dataset.solo : undefined;
-
-  const wire = (legend: HTMLElement) => {
-    const chart = legend.previousElementSibling;
-    const buttons = legend.querySelectorAll<HTMLButtonElement>("[data-solo]");
-    let pinned: string | undefined;
-
-    const solo = (project?: string) => {
-      for (const target of [legend, chart]) {
-        target?.toggleAttribute("data-solo", project !== undefined);
-      }
-
-      for (const seg of chart?.querySelectorAll<HTMLElement>(".seg") ?? []) {
-        seg.toggleAttribute("data-on", seg.dataset.project === project);
-      }
-
-      for (const button of buttons) {
-        button.ariaPressed = String(button.dataset.solo === project);
-      }
-    };
-
-    legend.addEventListener("click", (event) => {
-      const project = at(event);
-      pinned = pinned === project ? undefined : project;
-      solo(pinned);
-    });
-
-    legend.addEventListener("pointerover", (event) => {
-      if (event.pointerType === "mouse") {
-        solo(at(event) ?? pinned);
-      }
-    });
-
-    legend.addEventListener("pointerleave", (event) => {
-      if (event.pointerType === "mouse") {
-        solo(pinned);
-      }
-    });
-  };
-
-  for (const legend of document.querySelectorAll<HTMLElement>(".legend")) {
-    wire(legend);
-  }
-</script>
-
 <style>
   .activity {
-    --h0: #3fd9b8;
-    --h1: #f0a030;
-    --h2: #7b93ff;
-    --h3: #ff7356;
-    --h4: #b386f5;
-    --h5: #bcd04a;
-    --h6: #f27aa2;
-    --h-rest: #59605d;
-    --stub: color-mix(in oklab, var(--seg) 22%, transparent);
+    --h0: #46cfb2;
+    --h1: #ee6f5a;
+    --h2: #6f9cf2;
+    --h3: #e2a03a;
+    --h4: #dd80b0;
+    --h5: #a5c94e;
+    --h6: #a98cf0;
+    --h-more: color-mix(in oklab, var(--ink) 34%, var(--screen));
+    --h-private: color-mix(in oklab, var(--seg) 24%, var(--screen));
 
     display: grid;
     gap: 48px;
@@ -271,13 +214,14 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
 
   :root[data-finish="silver"] .activity {
     --h0: #00806a;
-    --h1: #a65a00;
-    --h2: #3552c4;
-    --h3: #c63b2b;
-    --h4: #8040c8;
-    --h5: #4f7400;
-    --h6: #c02f6e;
-    --h-rest: #6c7468;
+    --h1: #c0392b;
+    --h2: #3456b8;
+    --h3: #9a5b00;
+    --h4: #a8327a;
+    --h5: #557a00;
+    --h6: #6b46c1;
+    --h-more: color-mix(in oklab, var(--ink) 40%, var(--screen));
+    --h-private: color-mix(in oklab, var(--seg) 16%, var(--screen));
   }
 
   figure {
@@ -321,9 +265,21 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
   }
 
   .count {
+    display: inline-grid;
+    justify-items: end;
     font-size: 32px;
     line-height: 1;
-    font-feature-settings: "palt";
+  }
+
+  .count::before,
+  .count > span {
+    grid-area: 1 / 1;
+  }
+
+  .count::before {
+    content: "8888";
+    color: var(--seg-off);
+    text-shadow: none;
   }
 
   .unit {
@@ -336,7 +292,14 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     font-size: 16px;
     line-height: 1;
     white-space: nowrap;
-    font-feature-settings: "palt";
+  }
+
+  .label {
+    font-size: 9.5px;
+    line-height: 1;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    color: var(--seg);
   }
 
   .calendar {
@@ -362,11 +325,6 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     position: absolute;
     top: 0;
     left: 0;
-    font-size: 9.5px;
-    line-height: 1;
-    letter-spacing: 0.1em;
-    white-space: nowrap;
-    color: var(--seg);
     opacity: 0.55;
   }
 
@@ -387,12 +345,19 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     position: relative;
     border-radius: clamp(1px, 0.3cqi, 2px);
     background: color-mix(in oklab, var(--seg) calc(var(--glow, 0) * 100%), var(--seg-off));
+    outline: 1.5px solid transparent;
+    outline-offset: 1px;
+    transition: outline-color 120ms;
   }
 
   .cell::after {
     position: absolute;
     inset: calc(var(--gap) / -2);
     content: "";
+  }
+
+  .cell[data-picked] {
+    outline-color: var(--ink);
   }
 
   .cell[data-level="1"] {
@@ -413,16 +378,26 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     box-shadow: var(--seg-glow);
   }
 
-  .cell,
-  .bar {
-    outline: 1.5px solid transparent;
-    outline-offset: 1px;
-    transition: outline-color 120ms;
+  .plot {
+    position: relative;
+    --height: clamp(112px, 24cqi, 136px);
+
+    padding-left: 28px;
   }
 
-  .cell[data-picked],
-  .day[data-picked] .bar {
-    outline-color: var(--ink);
+  .rule {
+    position: absolute;
+    right: 0;
+    bottom: calc(22px + var(--at) * var(--height));
+    left: 0;
+    border-top: 1px dashed var(--seg-off);
+  }
+
+  .rule .label {
+    position: absolute;
+    left: 0;
+    translate: 0 -50%;
+    opacity: 0.45;
   }
 
   .chart {
@@ -434,46 +409,31 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
 
   .day {
     display: grid;
-    grid-template-rows: clamp(96px, 22cqi, 140px) 22px;
+    grid-template-rows: var(--height) 22px;
     padding-inline: calc(var(--gap) / 2);
   }
 
   .bar {
     display: flex;
-    align-items: end;
-    border-radius: 2px;
-    background: linear-gradient(var(--stub), var(--stub)) bottom / 100% 2px no-repeat;
-  }
-
-  .fill {
-    display: flex;
     flex-direction: column-reverse;
-    gap: 1px;
-    width: 100%;
-    min-height: 2px;
-    overflow: hidden;
-    border-radius: 2px;
+    background: linear-gradient(var(--seg-off), var(--seg-off)) bottom / 100% 2px no-repeat;
   }
 
   .seg {
-    flex-basis: 0;
-    min-height: 1px;
+    flex: none;
     background: var(--hue);
-    transition: background-color 140ms;
   }
 
-  :global(:root:not([data-finish="silver"])) .seg {
-    box-shadow: 0 0 6px color-mix(in srgb, var(--hue) 35%, transparent);
+  .seg:last-child {
+    border-radius: 2px 2px 0 0;
   }
 
-  .chart[data-solo] .seg:not([data-on]) {
-    background: var(--stub);
-    box-shadow: none;
+  .seg[data-split]:not(:last-child) {
+    box-shadow: inset 0 1px var(--screen);
   }
 
-  .chart[data-solo] [data-hue="rest"][data-on],
-  .others [aria-pressed="true"] {
-    --hue: var(--ink-2);
+  :global(:root:not([data-finish="silver"])) .seg:is([data-hue="0"], [data-hue="1"], [data-hue="2"], [data-hue="3"], [data-hue="4"], [data-hue="5"], [data-hue="6"]) {
+    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--hue) 40%, transparent));
   }
 
   [data-hue="0"] {
@@ -504,24 +464,40 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     --hue: var(--h6);
   }
 
-  [data-hue="rest"] {
-    --hue: var(--h-rest);
+  [data-hue="more"] {
+    --hue: var(--h-more);
+  }
+
+  [data-hue="private"] {
+    --hue: var(--h-private);
   }
 
   .tick {
     position: relative;
   }
 
+  .tick::before {
+    position: absolute;
+    top: 3px;
+    right: 0;
+    left: 0;
+    height: 2px;
+    content: "";
+    border-radius: 1px;
+    background: var(--ink);
+    opacity: 0;
+    transition: opacity 120ms;
+  }
+
+  .day[data-picked] .tick::before {
+    opacity: 1;
+  }
+
   .tick .label {
     position: absolute;
-    top: 8px;
+    top: 9px;
     left: 50%;
     translate: -50%;
-    font-size: 9.5px;
-    line-height: 1;
-    letter-spacing: 0.1em;
-    white-space: nowrap;
-    color: var(--seg);
     opacity: 0.55;
   }
 
@@ -538,35 +514,20 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
 
   .legend {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 0 24px;
-    margin: 14px 0 0;
-    padding: 10px 0 0;
+    margin: 16px 0 0;
+    padding: 12px 0 0;
     border-top: 1px solid var(--seg-off);
     list-style: none;
   }
 
-  .others {
-    grid-column: 1 / -1;
-  }
-
-  .nowrap {
-    white-space: nowrap;
-  }
-
-  .legend button {
+  .legend li {
     display: flex;
     align-items: center;
     gap: 8px;
-    width: 100%;
     min-width: 0;
-    padding: 6px 0;
-    border: 0;
-    background: none;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
+    padding: 7px 0;
     transition: opacity 140ms;
   }
 
@@ -581,13 +542,11 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
   .legend .label {
     font-size: 10px;
     letter-spacing: 0.08em;
-    color: var(--seg);
   }
 
   .name {
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
     opacity: 0.75;
   }
 
@@ -601,15 +560,33 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     content: "–";
   }
 
-  .legend button:has(.value:empty),
-  .legend[data-solo] button:not([aria-pressed="true"]) {
+  .legend li:has(.value:empty) {
     opacity: 0.4;
+  }
+
+  @container (width < 560px) {
+    .legend {
+      grid-template-columns: 1fr 1fr;
+      column-gap: 18px;
+    }
+
+    .legend .label {
+      letter-spacing: 0.04em;
+    }
+
+    .legend li {
+      gap: 7px;
+    }
   }
 
   @container (width < 420px) {
     .calendar {
-      grid-template-columns: repeat(var(--half), 1fr);
+      grid-template-columns: repeat(var(--columns), 1fr);
       row-gap: 14px;
+    }
+
+    .week:first-child {
+      grid-column-start: var(--lead);
     }
 
     .month [data-mode="wide"] {
@@ -627,25 +604,13 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     .date {
       font-size: 14px;
     }
-
-    .legend {
-      grid-template-columns: 1fr 1fr;
-      column-gap: 16px;
-    }
-
-    .legend button {
-      padding: 5px 0;
-    }
-
-    .others .name {
-      white-space: normal;
-    }
   }
 
   @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
     .readout,
     .week,
     .day,
+    .rule,
     .legend {
       animation: fade 420ms var(--ease-out) backwards paused;
     }
@@ -662,7 +627,7 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
       animation-delay: 420ms;
     }
 
-    .screen[data-on] :is(.readout, .week, .day, .legend) {
+    .screen[data-on] :is(.readout, .week, .day, .rule, .legend) {
       animation-play-state: running;
     }
   }
