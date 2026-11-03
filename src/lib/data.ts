@@ -1,6 +1,6 @@
 import { z } from "astro/zod";
 
-const USER = "AVGVSTVS96";
+import activity from "../data/activity.json";
 
 const day = z.object({
   count: z.number(),
@@ -23,13 +23,14 @@ const fetchJson = async <T extends z.ZodType>(
   return schema.parse(await response.json());
 };
 
-export const contributions = await fetchJson(
-  `https://github-contributions-api.jogruber.de/v4/${USER}?y=last`,
-  z.object({
-    contributions: z.array(day),
-    total: z.object({ lastYear: z.number() }),
-  })
-);
+const calendar = z
+  .object({ days: z.array(day), total: z.number() })
+  .parse(activity.calendar);
+
+export const contributions = {
+  contributions: calendar.days,
+  total: { lastYear: calendar.total },
+};
 
 export const weeks: Day[][] = [];
 
