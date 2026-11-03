@@ -12,7 +12,7 @@ const boot = async (display: HTMLElement) => {
     () => {
       display.dataset.on = "";
     },
-    { amount: 0.5 }
+    { amount: 0.25 }
   );
 };
 

@@ -52,7 +52,7 @@ const at = (counts: number[], i: number) => counts[i] ?? 0;
 
 const series = [
   ...ranked.slice(0, HUES).map(({ name, counts }, hue) => ({ name, counts, hue: `var(--c${hue})` })),
-  { name: "private", counts: activity.private, hue: "transparent" },
+  { name: "private", counts: activity.private, hue: "var(--c-private)" },
   {
     name: "other",
     counts: days.map((_, i) => sum(tail.map(({ counts }) => at(counts, i)))),
@@ -87,7 +87,7 @@ const cells = days.map((_, i) => {
 const ticks = new Map(
   days
     .map((day, i) => ({ day, i }))
-    .filter(({ i }) => i === days.length - 1 || (i % 7 === 0 && i < days.length - 4))
+    .filter(({ i }) => (days.length - 1 - i) % 7 === 0)
     .map(({ day, i }, n, marks) => {
       const previous = marks[n - 1]?.day;
       const text = previous && month.format(previous) === month.format(day) ? String(day.getUTCDate()) : short.format(day);
@@ -236,7 +236,6 @@ const others = (pick: (counts: number[]) => number) => {
                       <span
                         class="seg"
                         data-series={s}
-                        data-hollow={series[s]?.name === "private" ? "" : undefined}
                         style={`--hue: ${series[s]?.hue}`}
                       />
                     ),
@@ -252,8 +251,11 @@ const others = (pick: (counts: number[]) => number) => {
       </div>
       <ul class="legend">
         {
-          series.map(({ name, counts, hue }, s) => (
-            <li style={`--hue: ${hue}`} data-hollow={name === "private" ? "" : undefined}>
+          series
+            .map((entry, s) => ({ ...entry, s }))
+            .toSorted((a, b) => sum(b.counts) - sum(a.counts))
+            .map(({ name, counts, hue, s }) => (
+            <li style={`--hue: ${hue}`}>
               <button type="button" data-series={s} data-name={name} data-total={digits.format(sum(counts))} aria-pressed="false">
                 <span class="swatch" />
                 <span class="label name">{name}</span>
@@ -265,7 +267,7 @@ const others = (pick: (counts: number[]) => number) => {
           ))
         }
       </ul>
-      <p class="members label" data-show="others" data-idle={others(sum)}>
+      <p class="members label" data-series={series.length - 1} data-show="others" data-idle={others(sum)}>
         {others(sum)}
       </p>
     </div>
@@ -274,7 +276,7 @@ const others = (pick: (counts: number[]) => number) => {
 
 <script>
   const wire = (root: HTMLElement) => {
-    const segs = root.querySelectorAll<HTMLElement>(".seg[data-series]");
+    const segs = root.querySelectorAll<HTMLElement>(".seg[data-series], .members");
     const keys = root.querySelectorAll<HTMLButtonElement>(".legend button");
     const count = root.querySelector<HTMLElement>(".count");
     const unit = root.querySelector<HTMLElement>(".unit");
@@ -351,14 +353,14 @@ const others = (pick: (counts: number[]) => number) => {
   .activity {
     --c0: #4490fe;
     --c1: #fb9d59;
-    --c2: #ff1459;
+    --c2: #f2506e;
     --c3: #c167fb;
-    --c4: #4ee11b;
+    --c4: #5ccf7c;
     --c5: #fd95dc;
-    --c6: #f4d916;
+    --c6: #ece04e;
     --lit: var(--seg);
     --unlit: color-mix(in oklab, var(--lit) 5%, transparent);
-    --ring: color-mix(in oklab, var(--ink) 55%, transparent);
+    --c-private: color-mix(in oklab, var(--lit) 42%, transparent);
     --c-other: color-mix(in oklab, var(--ink) 42%, var(--screen));
     --gutter: 28px;
 
@@ -376,7 +378,7 @@ const others = (pick: (counts: number[]) => number) => {
     --c6: #a07000;
     --lit: #0c6152;
     --unlit: color-mix(in oklab, var(--lit) 5%, transparent);
-    --ring: color-mix(in oklab, var(--ink) 55%, transparent);
+    --c-private: color-mix(in oklab, var(--lit) 62%, transparent);
     --c-other: color-mix(in oklab, var(--ink) 38%, var(--screen));
   }
 
@@ -537,19 +539,19 @@ const others = (pick: (counts: number[]) => number) => {
   }
 
   .cell[data-level="0"] {
-    --glow: 0.1;
+    --glow: 0.07;
   }
 
   .cell[data-level="1"] {
-    --glow: 0.32;
+    --glow: 0.36;
   }
 
   .cell[data-level="2"] {
-    --glow: 0.55;
+    --glow: 0.58;
   }
 
   .cell[data-level="3"] {
-    --glow: 0.78;
+    --glow: 0.8;
   }
 
   .cell[data-level="4"] {
@@ -646,17 +648,12 @@ const others = (pick: (counts: number[]) => number) => {
     background: var(--hue);
   }
 
-  [data-hollow] :is(.swatch),
-  .seg[data-hollow]:not([data-dim]) {
-    box-shadow: inset 0 0 0 1px var(--ring);
-  }
-
   .seg[data-dim] {
     order: 1;
     background: var(--unlit);
   }
 
-  :global(:root:not([data-finish="silver"])) .seg[data-series]:not([data-dim], [data-hollow]) {
+  :global(:root:not([data-finish="silver"])) .seg[data-series]:not([data-dim]) {
     box-shadow: 0 0 4px color-mix(in srgb, var(--hue) 40%, transparent);
   }
 
@@ -680,7 +677,8 @@ const others = (pick: (counts: number[]) => number) => {
 
   .legend {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 188px));
+    justify-content: space-between;
     align-items: start;
     gap: 10px 24px;
     margin: 18px 0 0;
@@ -738,6 +736,10 @@ const others = (pick: (counts: number[]) => number) => {
 
   .value:empty::before {
     content: "–";
+  }
+
+  .members[data-dim] {
+    opacity: 0.2;
   }
 
   .members {
