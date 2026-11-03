@@ -176,6 +176,20 @@ const links = [
     }
 
     document.addEventListener("pointerdown", (event) => event.target instanceof Node && !nav.contains(event.target) && close());
+    const links = [...nav.querySelectorAll<HTMLElement>("[data-card]")];
+    let start = 0;
+
+    card.addEventListener("touchstart", (event) => (start = event.touches[0]?.clientX ?? 0), { passive: true });
+    card.addEventListener("touchend", (event) => {
+      const distance = (event.changedTouches[0]?.clientX ?? start) - start;
+      const index = links.findIndex((link) => Object.hasOwn(link.dataset, "current"));
+      const next = links[index - Math.sign(distance)];
+
+      if (Math.abs(distance) > 40 && index !== -1 && next) {
+        open(next);
+      }
+    });
+
     card.addEventListener("pointerenter", () => clearTimeout(closing));
     nav.addEventListener("pointerleave", (event) => event.pointerType === "mouse" && close());
     document.addEventListener("keydown", (event) => event.key === "Escape" && close());
@@ -252,6 +266,10 @@ const links = [
       opacity var(--show),
       scale var(--show) var(--ease),
       filter var(--show);
+  }
+
+  .card {
+    touch-action: pan-y;
   }
 
   .card[data-instant] {
