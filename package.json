@@ -8,6 +8,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "sync": "bun scripts/sync.ts",
+    "deploy": "sh scripts/deploy.sh",
     "check": "astro check && oxlint && oxfmt --check",
     "fix": "oxlint --fix; oxfmt"
   },
