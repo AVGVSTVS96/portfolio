@@ -16,7 +16,11 @@ for (const display of document.querySelectorAll<HTMLElement>(
     }
   });
 
-  display.addEventListener("pointerleave", () => {
+  display.addEventListener("pointerleave", (event) => {
+    if (event.pointerType !== "mouse") {
+      return;
+    }
+
     for (const slot of slots) {
       slot.textContent = slot.dataset.idle ?? "";
     }

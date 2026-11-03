@@ -1,10 +1,22 @@
 ---
+import activity from "../data/activity.json";
 import { contributions, weeks } from "../lib/data";
 
 const format = new Intl.NumberFormat("en-US");
 const month = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
 const long = new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", year: "numeric", timeZone: "UTC" });
 const total = format.format(contributions.total.lastYear);
+const short = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+
+const days = activity.days.map((day) => new Date(day));
+
+const tracks = Object.entries(activity.repos)
+  .map(([id, { daily }]) => ({ id, daily, sum: daily.reduce((a, b) => a + b, 0) }))
+  .filter(({ sum }) => sum > 0)
+  .toSorted((a, b) => b.sum - a.sum);
+
+const peak = Math.max(...tracks.flatMap(({ daily }) => daily));
+const glow = (count: number) => (count === 0 ? 0 : 0.25 + 0.75 * Math.sqrt(count / peak));
 
 const columns = weeks.map((week, index) => {
   const first = new Date(week[0]?.date ?? "");
@@ -36,6 +48,30 @@ const columns = weeks.map((week, index) => {
         </div>
       ))
     }
+  </div>
+  <div class="tracks" style={`--days: ${days.length}`}>
+    <span class="label">Commits by project · 30 days</span>
+    {
+      tracks.map(({ id, daily, sum }) => (
+        <div class="track">
+          <span class="name label">{id}</span>
+          {daily.map((count, i) => (
+            <span
+              class="tick"
+              style={`--glow: ${glow(count)}`}
+              data-lit={count > 0 ? "" : undefined}
+              data-tip
+              data-count={format.format(count)}
+              data-date={`${id} · ${short.format(days[i])}`}
+            />
+          ))}
+          <span class="sum label">{sum}</span>
+        </div>
+      ))
+    }
+    <div class="track axis">
+      {days.map((day, i) => (i % 7 === 0 ? <span class="label" style={`grid-column: ${i + 2}`}>{day.toISOString().slice(5, 10).replace("-", ".")}</span> : null))}
+    </div>
   </div>
 </div>
 
@@ -118,9 +154,78 @@ const columns = weeks.map((week, index) => {
     outline-offset: 1px;
   }
 
+  .tracks {
+    display: grid;
+    gap: 5px;
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--seg-off);
+  }
+
+  .tracks > .label {
+    margin-bottom: 6px;
+    color: var(--seg);
+    opacity: 0.6;
+  }
+
+  .track {
+    display: grid;
+    grid-template-columns: minmax(64px, 104px) repeat(var(--days), 1fr) 32px;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .track .label {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    color: var(--seg);
+    opacity: 0.6;
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 8px;
+  }
+
+  .sum {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tick {
+    height: 9px;
+    border-radius: 1.5px;
+    background: var(--seg-off);
+  }
+
+  .tick[data-lit] {
+    background: var(--seg);
+    box-shadow: var(--seg-glow);
+    opacity: var(--glow);
+  }
+
+  .tick:hover {
+    outline: 1px solid var(--seg);
+    outline-offset: 1px;
+  }
+
+  .axis {
+    margin-top: 4px;
+  }
+
+  .axis .label {
+    grid-row: 1;
+    width: 0;
+    overflow: visible;
+    opacity: 0.45;
+  }
+
   @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
     .readout,
-    .week {
+    .week,
+    .track {
       animation: fade 420ms var(--ease-out) backwards paused;
     }
 
@@ -128,7 +233,7 @@ const columns = weeks.map((week, index) => {
       animation-delay: calc((sibling-count() - sibling-index()) * 8ms);
     }
 
-    .display[data-on] :is(.readout, .week) {
+    .display[data-on] :is(.readout, .week, .track) {
       animation-play-state: running;
     }
   }

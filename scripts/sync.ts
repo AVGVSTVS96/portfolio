@@ -4,6 +4,7 @@ import { projects } from "../src/data/projects";
 
 const USER = "AVGVSTVS96";
 const MONTHS = 12;
+const DAYS = 30;
 
 const gh = (path: string, jq: string) => {
   const proc = Bun.spawnSync(["gh", "api", path, "--paginate", "--jq", jq]);
@@ -27,6 +28,18 @@ const months = Array.from({ length: MONTHS }, (_, i) =>
 
 const since = `${months[0]}-01T00:00:00Z`;
 
+const days = Array.from({ length: DAYS }, (_, i) =>
+  new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - (DAYS - 1 - i)
+    )
+  )
+    .toISOString()
+    .slice(0, 10)
+);
+
 const repos = Object.fromEntries(
   projects.map(({ id, repo, also = [] }) => {
     const dates = [repo, ...also].flatMap((slug) =>
@@ -42,19 +55,23 @@ const repos = Object.fromEntries(
       (month) => dates.filter((date) => date.startsWith(month)).length
     );
 
+    const daily = days.map(
+      (day) => dates.filter((date) => date.startsWith(day)).length
+    );
+
     const stars = z.coerce
       .number()
       .parse(gh(`repos/${repo}`, ".stargazers_count"));
 
     console.log(`${repo}: ${dates.length} commits, ${stars} stars`);
 
-    return [id, { commits, stars }];
+    return [id, { commits, daily, stars }];
   })
 );
 
 await Bun.write(
   "src/data/activity.json",
-  `${JSON.stringify({ months, repos }, null, 2)}\n`
+  `${JSON.stringify({ months, days, repos }, null, 2)}\n`
 );
 
 Bun.spawnSync(["bunx", "oxfmt", "src/data/activity.json"]);
