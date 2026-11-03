@@ -1,6 +1,7 @@
 export interface Project {
   id: string;
   repo: string;
+  also?: string[];
   blurb: string;
   npm?: string;
   site?: string;
@@ -25,6 +26,7 @@ export const projects: Project[] = [
   {
     id: "autofork",
     repo: "AVGVSTVS96/autofork",
+    also: ["AVGVSTVS96/autofork-app", "AVGVSTVS96/autofork-site"],
     blurb: "Customized forks that maintain themselves.",
     npm: "autofork",
     site: "https://autofork.com",

@@ -28,13 +28,15 @@ const months = Array.from({ length: MONTHS }, (_, i) =>
 const since = `${months[0]}-01T00:00:00Z`;
 
 const repos = Object.fromEntries(
-  projects.map(({ id, repo }) => {
-    const dates = gh(
-      `repos/${repo}/commits?author=${USER}&since=${since}&per_page=100`,
-      ".[].commit.author.date"
-    )
-      .split("\n")
-      .filter(Boolean);
+  projects.map(({ id, repo, also = [] }) => {
+    const dates = [repo, ...also].flatMap((slug) =>
+      gh(
+        `repos/${slug}/commits?author=${USER}&since=${since}&per_page=100`,
+        ".[].commit.author.date"
+      )
+        .split("\n")
+        .filter(Boolean)
+    );
 
     const commits = months.map(
       (month) => dates.filter((date) => date.startsWith(month)).length
@@ -55,4 +57,4 @@ await Bun.write(
   `${JSON.stringify({ months, repos }, null, 2)}\n`
 );
 
-Bun.spawnSync(["oxfmt", "src/data/activity.json"]);
+Bun.spawnSync(["bunx", "oxfmt", "src/data/activity.json"]);
