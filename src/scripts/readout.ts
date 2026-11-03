@@ -102,6 +102,12 @@ for (const display of document.querySelectorAll<HTMLElement>(
     }
   });
 
+  document.addEventListener("pointerdown", (event) => {
+    if (event.target instanceof Node && !display.contains(event.target)) {
+      show();
+    }
+  });
+
   display.addEventListener("pointerleave", (event) => {
     if (event.pointerType === "mouse") {
       show();
