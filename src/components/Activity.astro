@@ -20,7 +20,7 @@ const glow = (count: number) => (count === 0 ? 0 : 0.25 + 0.75 * Math.sqrt(count
 
 const columns = weeks.map((week, index) => {
   const first = new Date(week[0]?.date ?? "");
-  const starts = index > 0 && first.getUTCDate() <= 7;
+  const starts = index > 0 && index < weeks.length - 2 && first.getUTCDate() <= 7;
 
   return { week, label: starts ? month.format(first) : "" };
 });
@@ -29,7 +29,8 @@ const columns = weeks.map((week, index) => {
 <div class="display screen" data-readout data-boot>
   <div class="readout">
     <span class="count dot lit" data-show="count" data-idle={total}>{total}</span>
-    <span class="label" data-show="date" data-idle="Contributions · last 12 months">Contributions · last 12 months</span>
+    <span class="label" data-show="unit" data-idle="Contributions">Contributions</span>
+    <span class="label date" data-show="date" data-idle="Last 12 months">Last 12 months</span>
   </div>
   <div class="calendar">
     {
@@ -42,6 +43,7 @@ const columns = weeks.map((week, index) => {
               data-level={entry.level}
               data-tip
               data-count={format.format(entry.count)}
+              data-unit={entry.count === 1 ? "Contribution" : "Contributions"}
               data-date={long.format(new Date(entry.date))}
             />
           ))}
@@ -50,7 +52,10 @@ const columns = weeks.map((week, index) => {
     }
   </div>
   <div class="tracks" style={`--days: ${days.length}`}>
-    <span class="label">Commits by project · 30 days</span>
+    <div class="heading">
+      <span class="label">Commits by project</span>
+      <span class="label">Last 30 days</span>
+    </div>
     {
       tracks.map(({ id, daily, sum }) => (
         <div class="track">
@@ -62,6 +67,7 @@ const columns = weeks.map((week, index) => {
               data-lit={count > 0 ? "" : undefined}
               data-tip
               data-count={format.format(count)}
+              data-unit={count === 1 ? "Commit" : "Commits"}
               data-date={`${id} · ${short.format(days[i])}`}
             />
           ))}
@@ -81,11 +87,15 @@ const columns = weeks.map((week, index) => {
   }
 
   .readout {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
+    gap: 8px 16px;
     margin-bottom: 18px;
+  }
+
+  .count {
+    grid-column: 1 / -1;
   }
 
   .count {
@@ -97,21 +107,31 @@ const columns = weeks.map((week, index) => {
   .readout .label {
     color: var(--seg);
     opacity: 0.6;
+  }
+
+  .date {
     text-align: right;
   }
 
   .calendar {
-    display: flex;
-    justify-content: end;
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
     gap: 3px;
-    overflow: hidden;
+    container-type: inline-size;
   }
 
   .week {
     display: grid;
-    flex: none;
-    grid-template-rows: 14px repeat(7, 9px);
+    grid-template-rows: 14px repeat(7, auto);
+    align-content: start;
     gap: 3px;
+  }
+
+  @container (max-width: 420px) {
+    .week:nth-last-child(n + 27) {
+      display: none;
+    }
   }
 
   .month {
@@ -125,7 +145,7 @@ const columns = weeks.map((week, index) => {
   }
 
   .cell {
-    width: 9px;
+    aspect-ratio: 1;
     border-radius: 2px;
     background: var(--seg);
     box-shadow: var(--seg-glow);
@@ -155,6 +175,7 @@ const columns = weeks.map((week, index) => {
   }
 
   .tracks {
+    container-type: inline-size;
     display: grid;
     gap: 5px;
     margin-top: 22px;
@@ -162,15 +183,20 @@ const columns = weeks.map((week, index) => {
     border-top: 1px dashed var(--seg-off);
   }
 
-  .tracks > .label {
-    margin-bottom: 6px;
+  .heading {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .heading .label {
     color: var(--seg);
     opacity: 0.6;
   }
 
   .track {
     display: grid;
-    grid-template-columns: minmax(64px, 104px) repeat(var(--days), 1fr) 32px;
+    grid-template-columns: min(136px, 28%) repeat(var(--days), 1fr) 32px;
     align-items: center;
     gap: 2px;
   }
@@ -213,6 +239,12 @@ const columns = weeks.map((week, index) => {
 
   .axis {
     margin-top: 4px;
+  }
+
+  @container (max-width: 420px) {
+    .axis .label:nth-child(even) {
+      display: none;
+    }
   }
 
   .axis .label {
