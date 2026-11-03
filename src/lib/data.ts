@@ -27,20 +27,26 @@ const calendar = z
   .object({ days: z.array(day), total: z.number() })
   .parse(activity.calendar);
 
-export const contributions = {
-  contributions: calendar.days,
-  total: { lastYear: calendar.total },
-};
+const WEEKS = 52;
 
-export const weeks: Day[][] = [];
+const all: Day[][] = [];
 
-for (const entry of contributions.contributions) {
-  if (weeks.length === 0 || new Date(entry.date).getUTCDay() === 0) {
-    weeks.push([]);
+for (const entry of calendar.days) {
+  if (all.length === 0 || new Date(entry.date).getUTCDay() === 0) {
+    all.push([]);
   }
 
-  weeks.at(-1)?.push(entry);
+  all.at(-1)?.push(entry);
 }
+
+export const weeks = all.slice(-WEEKS);
+
+export const contributions = {
+  contributions: weeks.flat(),
+  total: {
+    lastYear: weeks.flat().reduce((total, { count }) => total + count, 0),
+  },
+};
 
 export const npmVersion = async (name: string) => {
   const latest = await fetchJson(
