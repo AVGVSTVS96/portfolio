@@ -9,6 +9,8 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const image = new URL("/og.png", Astro.site);
 ---
 
 <!doctype html>
@@ -18,10 +20,23 @@ const { title, description } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Bassim Shahidy" />
+    <meta property="og:url" content={canonical} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta name="theme-color" content="#0a0a0b" />
+    <meta property="og:image" content={image} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Bassim Shahidy, over a year of his GitHub contributions lit like a VFD display." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:creator" content="@AVGVSTVS96" />
+    <meta name="theme-color" content="#070708" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
     <script is:inline>
       document.documentElement.dataset.finish =
         localStorage.getItem("finish") ??
@@ -35,7 +50,7 @@ const { title, description } = Astro.props;
     </script>
     <Font cssVariable="--font-sans" preload />
     <Font cssVariable="--font-mono" />
-    <Font cssVariable="--font-dot" />
+    <Font cssVariable="--font-dot" preload />
   </head>
   <body>
     <div class="frame">
@@ -76,7 +91,7 @@ const { title, description } = Astro.props;
   }
 
   footer {
-    margin-top: 120px;
+    margin-top: 56px;
     padding-top: 16px;
     border-top: 1px solid var(--line);
   }
