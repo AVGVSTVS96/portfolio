@@ -3,10 +3,9 @@ import activity from "../data/activity.json";
 import Grouped from "./Grouped.astro";
 import { contributions, weeks } from "../lib/data";
 
-const HUES = 7;
+const HUES = 6;
 const ROWS = 24;
 const GAP = 3;
-const LEAD = 4;
 
 const digits = new Intl.NumberFormat("en-US");
 const month = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
@@ -31,17 +30,9 @@ const year = contributions.total.lastYear;
 const opens = (week: number) => weeks[week]?.some(({ date }) => date.endsWith("-01")) ?? false;
 
 const months = (from: number, to: number) => {
-  const starts = Array.from({ length: to - from }, (_, i) => from + i).filter((week) => week === from || opens(week));
+  const starts = Array.from({ length: to - from }, (_, i) => from + i).filter((week) => week === 0 || opens(week));
   const room = (week: number) => Math.min(week, to - GAP);
-
-  const kept = starts.filter((week, i) => {
-    const next = starts[i + 1];
-    const previous = starts[i - 1];
-
-    const lead = week !== from || opens(week) || next === undefined || room(next) - week >= LEAD;
-
-    return lead && (previous === undefined || room(week) - previous >= GAP);
-  });
+  const kept = starts.filter((week, i) => i === 0 || room(week) - (starts[i - 1] ?? 0) >= GAP);
 
   return kept.map((week) => ({
     week,
@@ -61,9 +52,10 @@ const at = (counts: number[], i: number) => counts[i] ?? 0;
 
 const series = [
   ...ranked.slice(0, HUES).map(({ name, counts }, hue) => ({ name, counts, hue: `var(--c${hue})` })),
+  { name: "private", counts: activity.private, hue: "var(--c-private)" },
   {
     name: "other",
-    counts: days.map((_, i) => at(activity.private, i) + sum(tail.map(({ counts }) => at(counts, i)))),
+    counts: days.map((_, i) => sum(tail.map(({ counts }) => at(counts, i)))),
     hue: "var(--c-other)",
   },
 ].filter(({ counts }) => sum(counts) > 0);
@@ -107,7 +99,7 @@ const ticks = new Map(
 const short16 = (name: string) => (name.length > 16 ? `${name.slice(0, 15)}…` : name);
 
 const others = (pick: (counts: number[]) => number) => {
-  const shown = [{ name: "private", counts: activity.private }, ...tail]
+  const shown = tail
     .flatMap(({ name, counts }) => (pick(counts) > 0 ? [{ name, count: pick(counts) }] : []))
     .toSorted((a, b) => b.count - a.count);
 
@@ -358,10 +350,10 @@ const others = (pick: (counts: number[]) => number) => {
     --c3: #c167fb;
     --c4: #4ee11b;
     --c5: #fd95dc;
-    --c6: #f4d916;
     --lit: var(--seg);
-    --unlit: color-mix(in oklab, var(--lit) 8%, transparent);
-    --c-other: color-mix(in oklab, var(--lit) 38%, transparent);
+    --unlit: color-mix(in oklab, var(--lit) 5%, transparent);
+    --c-private: color-mix(in oklab, var(--lit) 42%, transparent);
+    --c-other: color-mix(in oklab, var(--ink) 42%, var(--screen));
     --gutter: 28px;
 
     display: grid;
@@ -375,10 +367,10 @@ const others = (pick: (counts: number[]) => number) => {
     --c3: #6f049f;
     --c4: #118d29;
     --c5: #e10195;
-    --c6: #7a5c00;
     --lit: #0c6152;
-    --unlit: color-mix(in oklab, var(--lit) 7%, transparent);
-    --c-other: color-mix(in oklab, var(--lit) 42%, transparent);
+    --unlit: color-mix(in oklab, var(--lit) 5%, transparent);
+    --c-private: color-mix(in oklab, var(--lit) 62%, transparent);
+    --c-other: color-mix(in oklab, var(--ink) 38%, var(--screen));
   }
 
   figure {
@@ -429,7 +421,6 @@ const others = (pick: (counts: number[]) => number) => {
   }
 
   .count {
-    min-width: 3ch;
     font-size: 32px;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -727,6 +718,7 @@ const others = (pick: (counts: number[]) => number) => {
 
   .legend .value {
     margin-left: auto;
+    padding-left: 8px;
     font-variant-numeric: tabular-nums;
   }
 
