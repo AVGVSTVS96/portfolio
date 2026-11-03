@@ -4,137 +4,224 @@ import { contributions, weeks } from "../lib/data";
 
 const format = new Intl.NumberFormat("en-US");
 const month = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
-const long = new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", year: "numeric", timeZone: "UTC" });
-const total = format.format(contributions.total.lastYear);
-const short = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const monthYear = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+const day = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 
-const days = activity.days.map((day) => new Date(day));
+const fullDay = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const range = (dates: Intl.DateTimeFormat, from: Date, to: Date) => dates.formatRange(from, to).replace(/\s*–\s*/u, " – ");
+
+const year = contributions.contributions;
+const total = format.format(contributions.total.lastYear);
+const yearRange = range(monthYear, new Date(year[0]?.date ?? ""), new Date(year.at(-1)?.date ?? ""));
+const padding = 7 - (weeks[0]?.length ?? 7);
+
+const half = Math.ceil(weeks.length / 2);
+const date = (week: number, at: number) => new Date(weeks[week]?.at(at)?.date ?? "");
+const startsMonth = (week: number) => date(week, -1).getUTCDate() <= 7;
+
+const labelled = (week: number, first: number, end: number) =>
+  week <= end - 4 && (startsMonth(week) || (week === first && !startsMonth(week + 1) && !startsMonth(week + 2)));
+
+const columns = weeks.map((week, index) => {
+  const first = index < half ? 0 : half;
+
+  return {
+    week,
+    label: month.format(date(index, startsMonth(index) ? -1 : 0)),
+    wide: labelled(index, 0, weeks.length),
+    narrow: labelled(index, first, first === 0 ? half : weeks.length),
+  };
+});
+
+const days = activity.days.map((entry) => new Date(entry));
+const monthDays = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const monthRange = range(monthDays, days[0] ?? new Date(), days.at(-1) ?? new Date());
 
 const tracks = Object.entries(activity.repos)
   .map(([id, { daily }]) => ({ id, daily, sum: daily.reduce((a, b) => a + b, 0) }))
   .filter(({ sum }) => sum > 0)
   .toSorted((a, b) => b.sum - a.sum);
 
+const commits = format.format(tracks.reduce((all, { sum }) => all + sum, 0));
 const peak = Math.max(...tracks.flatMap(({ daily }) => daily));
-const glow = (count: number) => (count === 0 ? 0 : 0.25 + 0.75 * Math.sqrt(count / peak));
-
-const columns = weeks.map((week, index) => {
-  const first = new Date(week[0]?.date ?? "");
-  const starts = index > 0 && index < weeks.length - 2 && first.getUTCDate() <= 7;
-
-  return { week, label: starts ? month.format(first) : "" };
-});
+const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count / peak));
 ---
 
-<div class="display screen" data-readout data-boot>
-  <div class="readout">
-    <span class="count dot lit" data-show="count" data-idle={total}>{total}</span>
-    <span class="label" data-show="unit" data-idle="Contributions">Contributions</span>
-    <span class="label date" data-show="date" data-idle="Last 12 months">Last 12 months</span>
-  </div>
-  <div class="calendar">
-    {
-      columns.map(({ week, label }) => (
-        <div class="week">
-          <span class="month label">{label}</span>
-          {week.map((entry) => (
-            <span
-              class="cell"
-              data-level={entry.level}
-              data-tip
-              data-count={format.format(entry.count)}
-              data-unit={entry.count === 1 ? "Contribution" : "Contributions"}
-              data-date={long.format(new Date(entry.date))}
-            />
-          ))}
-        </div>
-      ))
-    }
-  </div>
-  <div class="tracks" style={`--days: ${days.length}`}>
-    <div class="heading">
-      <span class="label">Commits by project</span>
-      <span class="label">Last 30 days</span>
+<div class="activity">
+  <figure>
+    <figcaption><span class="dot">01</span><span class="label">Contributions</span></figcaption>
+    <div class="screen" data-readout data-boot>
+      <div class="readout">
+        <span class="caption label" data-show="caption" data-idle="Total">Total</span>
+        <span class="caption label" data-show="when" data-idle="Last 12 months">Last 12 months</span>
+        <span class="count dot lit" data-show="count" data-idle={total}>{total}</span>
+        <span class="date dot lit" data-show="date" data-idle={yearRange}>{yearRange}</span>
+      </div>
+      <div class="calendar" style={`--weeks: ${weeks.length}; --half: ${half}`}>
+        {
+          columns.map(({ week, label, wide, narrow }, index) => (
+            <div class="week">
+              <span class="month label" data-wide={wide ? "" : undefined} data-narrow={narrow ? "" : undefined}>
+                {wide || narrow ? label : ""}
+              </span>
+              {index === 0 && Array.from({ length: padding }, () => <span />)}
+              {week.map((entry) => (
+                <span
+                  class="cell"
+                  data-level={entry.level}
+                  data-tip
+                  data-caption={entry.count === 1 ? "Contribution" : "Contributions"}
+                  data-when="Date"
+                  data-count={format.format(entry.count)}
+                  data-date={fullDay.format(new Date(entry.date))}
+                />
+              ))}
+            </div>
+          ))
+        }
+      </div>
     </div>
-    {
-      tracks.map(({ id, daily, sum }) => (
-        <div class="track">
-          <span class="name label">{id}</span>
-          {daily.map((count, i) => (
-            <span
-              class="tick"
-              style={`--glow: ${glow(count)}`}
-              data-lit={count > 0 ? "" : undefined}
-              data-tip
-              data-count={format.format(count)}
-              data-unit={count === 1 ? "Commit" : "Commits"}
-              data-date={`${id} · ${short.format(days[i])}`}
-            />
-          ))}
-          <span class="sum label">{sum}</span>
+  </figure>
+
+  <figure>
+    <figcaption><span class="dot">02</span><span class="label">Commits by project</span></figcaption>
+    <div class="screen" data-readout data-boot>
+      <div class="readout">
+        <span class="caption label" data-show="caption" data-idle="Total">Total</span>
+        <span class="caption label" data-show="when" data-idle="Last 30 days">Last 30 days</span>
+        <span class="count dot lit" data-show="count" data-idle={commits}>{commits}</span>
+        <span class="date dot lit" data-show="date" data-idle={monthRange}>{monthRange}</span>
+      </div>
+      <div class="tracks" style={`--days: ${days.length}`}>
+        {
+          tracks.map(({ id, daily, sum }) => (
+            <div class="track">
+              <span class="name label">{id}</span>
+              {daily.map((count, i) => (
+                <span
+                  class="tick"
+                  style={`--glow: ${glow(count)}`}
+                  data-bright={glow(count) >= 0.75 ? "" : undefined}
+                  data-tip
+                  data-caption={id}
+                  data-when="Date"
+                  data-count={format.format(count)}
+                  data-date={day.format(days[i])}
+                />
+              ))}
+              <span class="sum label">{format.format(sum)}</span>
+            </div>
+          ))
+        }
+        <div class="track axis">
+          {days.map((entry, i) =>
+            i % 7 === 0 ? (
+              <span class="label" style={`grid-column: ${i + 2}`}>
+                {monthDays.format(entry)}
+              </span>
+            ) : null,
+          )}
         </div>
-      ))
-    }
-    <div class="track axis">
-      {days.map((day, i) => (i % 7 === 0 ? <span class="label" style={`grid-column: ${i + 2}`}>{day.toISOString().slice(5, 10).replace("-", ".")}</span> : null))}
+      </div>
     </div>
-  </div>
+  </figure>
 </div>
 
 <style>
-  .display {
-    padding: 18px 18px 16px;
+  .activity {
+    display: grid;
+    gap: 36px;
+  }
+
+  figure {
+    margin: 0;
+  }
+
+  figcaption {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  figcaption .dot {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+
+  figcaption .label {
+    color: var(--ink-2);
+  }
+
+  figcaption::after {
+    flex: 1;
+    height: 1px;
+    content: "";
+    background: var(--line);
+  }
+
+  .screen {
+    padding: 18px 20px 20px;
+    container-type: inline-size;
   }
 
   .readout {
     display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: baseline;
+    grid-template-columns: auto auto;
+    justify-content: space-between;
+    align-items: last baseline;
     gap: 8px 16px;
-    margin-bottom: 18px;
+    margin-bottom: 20px;
   }
 
-  .count {
-    grid-column: 1 / -1;
+  .caption {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--seg);
+    opacity: 0.55;
+  }
+
+  .readout > :nth-child(even) {
+    text-align: right;
   }
 
   .count {
     font-size: 34px;
-    line-height: 1;
+    line-height: 0.9;
     font-variant-numeric: tabular-nums;
   }
 
-  .readout .label {
-    color: var(--seg);
-    opacity: 0.6;
-  }
-
   .date {
-    text-align: right;
+    font-size: 17px;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .calendar {
     display: grid;
-    grid-auto-columns: 1fr;
-    grid-auto-flow: column;
-    gap: 3px;
-    container-type: inline-size;
+    --gap: clamp(1.5px, 0.5cqi, 3px);
+
+    grid-template-columns: repeat(var(--weeks), 1fr);
+    gap: var(--gap);
+    touch-action: pan-y;
   }
 
   .week {
     display: grid;
-    grid-template-rows: 14px repeat(7, auto);
+    gap: var(--gap);
     align-content: start;
-    gap: 3px;
-  }
-
-  @container (max-width: 420px) {
-    .week:nth-last-child(n + 27) {
-      display: none;
-    }
   }
 
   .month {
+    height: 16px;
     width: 0;
     overflow: visible;
     font-size: 9px;
@@ -144,61 +231,59 @@ const columns = weeks.map((week, index) => {
     opacity: 0.45;
   }
 
-  .cell {
-    aspect-ratio: 1;
-    border-radius: 2px;
-    background: var(--seg);
-    box-shadow: var(--seg-glow);
-    transition: opacity 120ms;
+  .month:not([data-wide]) {
+    visibility: hidden;
   }
 
-  .cell[data-level="0"] {
-    background: var(--seg-off);
-    box-shadow: none;
+  .week > span:not(.month) {
+    aspect-ratio: 1;
+  }
+
+  .cell,
+  .tick {
+    background: color-mix(in oklab, var(--seg) calc(var(--glow, 0) * 100%), var(--seg-off));
+  }
+
+  .cell {
+    border-radius: clamp(1px, 0.3cqi, 2px);
   }
 
   .cell[data-level="1"] {
-    opacity: 0.3;
+    --glow: 0.3;
   }
 
   .cell[data-level="2"] {
-    opacity: 0.52;
+    --glow: 0.52;
   }
 
   .cell[data-level="3"] {
-    opacity: 0.75;
+    --glow: 0.75;
   }
 
-  .cell:hover {
-    outline: 1px solid var(--seg);
+  .cell[data-level="4"] {
+    --glow: 1;
+  }
+
+  :is(.cell[data-level="4"], .tick[data-bright]) {
+    box-shadow: var(--seg-glow);
+  }
+
+  [data-picked] {
+    outline: 1.5px solid var(--led);
     outline-offset: 1px;
   }
 
   .tracks {
-    container-type: inline-size;
     display: grid;
-    gap: 5px;
-    margin-top: 22px;
-    padding-top: 16px;
-    border-top: 1px dashed var(--seg-off);
-  }
-
-  .heading {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-  }
-
-  .heading .label {
-    color: var(--seg);
-    opacity: 0.6;
+    gap: 6px;
+    touch-action: pan-y;
   }
 
   .track {
     display: grid;
-    grid-template-columns: min(136px, 28%) repeat(var(--days), 1fr) 32px;
+    grid-template-columns: min(136px, 26%) repeat(var(--days), 1fr) 36px;
     align-items: center;
-    gap: 2px;
+    gap: clamp(1.5px, 0.4cqi, 2px);
   }
 
   .track .label {
@@ -207,12 +292,17 @@ const columns = weeks.map((week, index) => {
     white-space: nowrap;
     color: var(--seg);
     opacity: 0.6;
+    transition: opacity 120ms;
+  }
+
+  .track:has([data-picked]) .label {
+    opacity: 1;
   }
 
   .name {
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-right: 8px;
+    padding-right: 10px;
   }
 
   .sum {
@@ -221,30 +311,12 @@ const columns = weeks.map((week, index) => {
   }
 
   .tick {
-    height: 9px;
+    height: 10px;
     border-radius: 1.5px;
-    background: var(--seg-off);
-  }
-
-  .tick[data-lit] {
-    background: var(--seg);
-    box-shadow: var(--seg-glow);
-    opacity: var(--glow);
-  }
-
-  .tick:hover {
-    outline: 1px solid var(--seg);
-    outline-offset: 1px;
   }
 
   .axis {
-    margin-top: 4px;
-  }
-
-  @container (max-width: 420px) {
-    .axis .label:nth-child(even) {
-      display: none;
-    }
+    margin-top: 8px;
   }
 
   .axis .label {
@@ -252,6 +324,45 @@ const columns = weeks.map((week, index) => {
     width: 0;
     overflow: visible;
     opacity: 0.45;
+  }
+
+  @container (width < 420px) {
+    .calendar {
+      grid-template-columns: repeat(var(--half), 1fr);
+      row-gap: 14px;
+    }
+
+    .month[data-narrow] {
+      visibility: visible;
+    }
+
+    .month:not([data-narrow]) {
+      visibility: hidden;
+    }
+
+    .count {
+      font-size: 30px;
+    }
+
+    .date {
+      font-size: 14px;
+    }
+
+    .track {
+      grid-template-columns: 31% repeat(var(--days), 1fr) 26px;
+    }
+
+    .track .label {
+      letter-spacing: 0.04em;
+    }
+
+    .name {
+      padding-right: 6px;
+    }
+
+    .axis .label:nth-child(even) {
+      display: none;
+    }
   }
 
   @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
@@ -262,10 +373,14 @@ const columns = weeks.map((week, index) => {
     }
 
     .week {
-      animation-delay: calc((sibling-count() - sibling-index()) * 8ms);
+      animation-delay: calc(sibling-index() * 8ms);
     }
 
-    .display[data-on] :is(.readout, .week, .track) {
+    .track {
+      animation-delay: calc(sibling-index() * 24ms);
+    }
+
+    .screen[data-on] :is(.readout, .week, .track) {
       animation-play-state: running;
     }
   }

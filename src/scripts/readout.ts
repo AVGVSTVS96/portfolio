@@ -1,28 +1,57 @@
+const tipAt = (target: EventTarget | null) =>
+  target instanceof Element
+    ? (target.closest<HTMLElement>("[data-tip]") ?? undefined)
+    : undefined;
+
 for (const display of document.querySelectorAll<HTMLElement>(
   "[data-readout]"
 )) {
   const slots = display.querySelectorAll<HTMLElement>("[data-show]");
+  let picked: HTMLElement | undefined;
 
-  display.addEventListener("pointerover", (event) => {
-    const source =
-      event.target instanceof HTMLElement
-        ? event.target.closest<HTMLElement>("[data-tip]")
-        : null;
+  const show = (source?: HTMLElement) => {
+    if (source === picked) {
+      return;
+    }
+
+    if (picked) {
+      delete picked.dataset.picked;
+    }
+
+    if (source) {
+      source.dataset.picked = "";
+    }
+
+    picked = source;
 
     for (const slot of slots) {
       const key = slot.dataset.show ?? "";
       slot.textContent =
         (source ? source.dataset[key] : undefined) ?? slot.dataset.idle ?? "";
     }
+  };
+
+  display.addEventListener("pointerover", (event) => {
+    show(tipAt(event.target));
   });
 
-  display.addEventListener("pointerleave", (event) => {
-    if (event.pointerType !== "mouse") {
+  display.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "mouse") {
       return;
     }
 
-    for (const slot of slots) {
-      slot.textContent = slot.dataset.idle ?? "";
+    const under = tipAt(
+      document.elementFromPoint(event.clientX, event.clientY)
+    );
+
+    if (under && display.contains(under)) {
+      show(under);
+    }
+  });
+
+  display.addEventListener("pointerleave", (event) => {
+    if (event.pointerType === "mouse") {
+      show();
     }
   });
 }
