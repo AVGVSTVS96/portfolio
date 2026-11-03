@@ -79,7 +79,7 @@ export const projects: Project[] = [
   },
   {
     id: "hex-keyboard",
-    repo: "AVGVSTVS96/hex-keyboard",
+    repo: "AVGVSTVS96/iikb",
     blurb:
       "An iPhone keyboard that feels like Apple's and learns where you tap.",
     site: "https://hex-keyboard.vercel.app",
