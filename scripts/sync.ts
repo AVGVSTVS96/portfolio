@@ -16,7 +16,11 @@ const gh = (path: string, jq: string) => {
   return proc.stdout.toString().trim();
 };
 
-const now = new Date();
+const local = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Los_Angeles",
+});
+
+const now = new Date(`${local.format(new Date())}T00:00:00Z`);
 
 const months = Array.from({ length: MONTHS }, (_, i) =>
   new Date(
@@ -49,6 +53,7 @@ const repos = Object.fromEntries(
       )
         .split("\n")
         .filter(Boolean)
+        .map((date) => local.format(new Date(date)))
     );
 
     const commits = months.map(

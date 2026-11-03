@@ -2,24 +2,16 @@
 import activity from "../data/activity.json";
 import { contributions, weeks } from "../lib/data";
 
+const COLORED = 4;
+
 const format = new Intl.NumberFormat("en-US");
 const month = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
-const monthYear = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
-const day = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+const short = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const long = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
-const fullDay = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  timeZone: "UTC",
-});
+const plural = (count: number, word: string) => (count === 1 ? word : `${word}s`);
 
-const range = (dates: Intl.DateTimeFormat, from: Date, to: Date) => dates.formatRange(from, to).replace(/\s*–\s*/u, " – ");
-
-const year = contributions.contributions;
 const total = format.format(contributions.total.lastYear);
-const yearRange = range(monthYear, new Date(year[0]?.date ?? ""), new Date(year.at(-1)?.date ?? ""));
 const padding = 7 - (weeks[0]?.length ?? 7);
 
 const half = Math.ceil(weeks.length / 2);
@@ -41,29 +33,38 @@ const columns = weeks.map((week, index) => {
 });
 
 const days = activity.days.map((entry) => new Date(entry));
-const monthDays = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-const monthRange = range(monthDays, days[0] ?? new Date(), days.at(-1) ?? new Date());
+const sum = (counts: number[]) => counts.reduce((a, b) => a + b, 0);
 
-const tracks = Object.entries(activity.repos)
-  .map(([id, { daily }]) => ({ id, daily, sum: daily.reduce((a, b) => a + b, 0) }))
-  .filter(({ sum }) => sum > 0)
-  .toSorted((a, b) => b.sum - a.sum);
+const ranked = Object.entries(activity.repos)
+  .map(([id, { daily }]) => ({ id, daily, total: sum(daily) }))
+  .filter(({ total: commits }) => commits > 0)
+  .toSorted((a, b) => b.total - a.total);
 
-const commits = format.format(tracks.reduce((all, { sum }) => all + sum, 0));
-const peak = Math.max(...tracks.flatMap(({ daily }) => daily));
-const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count / peak));
+const rest = ranked.slice(COLORED);
+
+const series = [
+  ...ranked.slice(0, COLORED),
+  ...(rest.length > 0
+    ? [{ id: `${rest.length} more`, daily: days.map((_, i) => sum(rest.map(({ daily }) => daily[i] ?? 0))), total: sum(rest.map((r) => r.total)) }]
+    : []),
+];
+
+const totals = days.map((_, i) => sum(series.map(({ daily }) => daily[i] ?? 0)));
+const peak = Math.max(...totals);
+const commits = sum(totals);
+
+const ticks = new Set(days.map((_, i) => i).filter((i) => (days.length - 1 - i) % 7 === 0));
 ---
 
 <div class="activity">
   <figure>
-    <figcaption><span class="dot">01</span><span class="label">Contributions</span></figcaption>
+    <figcaption><span class="dot">01</span><span class="label">Last 12 months</span></figcaption>
     <div class="screen" data-readout data-boot>
-      <div class="readout">
-        <span class="caption label" data-show="caption" data-idle="Total">Total</span>
-        <span class="caption label" data-show="when" data-idle="Last 12 months">Last 12 months</span>
+      <p class="readout">
         <span class="count dot lit" data-show="count" data-idle={total}>{total}</span>
-        <span class="date dot lit" data-show="date" data-idle={yearRange}>{yearRange}</span>
-      </div>
+        <span class="unit label" data-show="unit" data-idle="contributions">contributions</span>
+        <span class="date dot lit" data-show="date" data-idle=""></span>
+      </p>
       <div class="calendar" style={`--weeks: ${weeks.length}; --half: ${half}`}>
         {
           columns.map(({ week, label, wide, narrow }, index) => (
@@ -77,10 +78,9 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
                   class="cell"
                   data-level={entry.level}
                   data-tip
-                  data-caption={entry.count === 1 ? "Contribution" : "Contributions"}
-                  data-when="Date"
                   data-count={format.format(entry.count)}
-                  data-date={fullDay.format(new Date(entry.date))}
+                  data-unit={plural(entry.count, "contribution")}
+                  data-date={long.format(new Date(entry.date))}
                 />
               ))}
             </div>
@@ -91,53 +91,71 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
   </figure>
 
   <figure>
-    <figcaption><span class="dot">02</span><span class="label">Commits by project</span></figcaption>
+    <figcaption><span class="dot">02</span><span class="label">Last 30 days, by project</span></figcaption>
     <div class="screen" data-readout data-boot>
-      <div class="readout">
-        <span class="caption label" data-show="caption" data-idle="Total">Total</span>
-        <span class="caption label" data-show="when" data-idle="Last 30 days">Last 30 days</span>
-        <span class="count dot lit" data-show="count" data-idle={commits}>{commits}</span>
-        <span class="date dot lit" data-show="date" data-idle={monthRange}>{monthRange}</span>
-      </div>
-      <div class="tracks" style={`--days: ${days.length}`}>
+      <p class="readout">
+        <span class="count dot lit" data-show="count" data-idle={format.format(commits)}>{format.format(commits)}</span>
+        <span class="unit label" data-show="unit" data-idle="commits">commits</span>
+        <span class="date dot lit" data-show="date" data-idle=""></span>
+      </p>
+      <div class="chart" style={`--days: ${days.length}`}>
         {
-          tracks.map(({ id, daily, sum }) => (
-            <div class="track">
-              <span class="name label">{id}</span>
-              {daily.map((count, i) => (
-                <span
-                  class="tick"
-                  style={`--glow: ${glow(count)}`}
-                  data-bright={glow(count) >= 0.75 ? "" : undefined}
-                  data-tip
-                  data-caption={id}
-                  data-when="Date"
-                  data-count={format.format(count)}
-                  data-date={day.format(days[i])}
-                />
-              ))}
-              <span class="sum label">{format.format(sum)}</span>
-            </div>
+          days.map((entry, i) => (
+            <span
+              class="day"
+              data-tip
+              data-count={format.format(totals[i] ?? 0)}
+              data-unit={plural(totals[i] ?? 0, "commit")}
+              data-date={short.format(entry)}
+              {...Object.fromEntries(series.map(({ daily }, s) => [`data-s${s}`, format.format(daily[i] ?? 0)]))}
+            >
+              <span class="bar">
+                <span class="fill" style={`height: ${((totals[i] ?? 0) / peak) * 100}%`}>
+                  {series.map(({ daily }, s) =>
+                    daily[i] ? <span class="seg" data-series={s} style={`flex-grow: ${daily[i]}`} /> : null,
+                  )}
+                </span>
+              </span>
+              <span class="tick">{ticks.has(i) && <span class="label">{short.format(entry)}</span>}</span>
+            </span>
           ))
         }
-        <div class="track axis">
-          {days.map((entry, i) =>
-            i % 7 === 0 ? (
-              <span class="label" style={`grid-column: ${i + 2}`}>
-                {monthDays.format(entry)}
-              </span>
-            ) : null,
-          )}
-        </div>
       </div>
+      <ul class="legend">
+        {
+          series.map(({ id, total: count }, s) => (
+            <li data-series={s}>
+              <span class="swatch" />
+              <span class="label name">{id}</span>
+              <span class="label value" data-show={`s${s}`} data-idle={format.format(count)}>
+                {format.format(count)}
+              </span>
+            </li>
+          ))
+        }
+      </ul>
     </div>
   </figure>
 </div>
 
 <style>
   .activity {
+    --s0: #5cf2d0;
+    --s1: #ffb347;
+    --s2: #ff6b8b;
+    --s3: #82a8ff;
+    --s4: #56625e;
+
     display: grid;
-    gap: 36px;
+    gap: 44px;
+  }
+
+  :root[data-finish="silver"] .activity {
+    --s0: #1a8a72;
+    --s1: #b5740f;
+    --s2: #c0365a;
+    --s3: #3a64c4;
+    --s4: #8b9187;
   }
 
   figure {
@@ -148,7 +166,7 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
 
   figcaption .dot {
@@ -173,34 +191,26 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
   }
 
   .readout {
-    display: grid;
-    grid-template-columns: auto auto;
-    justify-content: space-between;
-    align-items: last baseline;
-    gap: 8px 16px;
-    margin-bottom: 20px;
-  }
-
-  .caption {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--seg);
-    opacity: 0.55;
-  }
-
-  .readout > :nth-child(even) {
-    text-align: right;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 18px;
   }
 
   .count {
-    font-size: 34px;
-    line-height: 0.9;
+    font-size: 32px;
+    line-height: 1;
     font-variant-numeric: tabular-nums;
   }
 
+  .unit {
+    color: var(--seg);
+    opacity: 0.6;
+  }
+
   .date {
-    font-size: 17px;
+    margin-left: auto;
+    font-size: 16px;
     line-height: 1;
     white-space: nowrap;
   }
@@ -239,13 +249,9 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
     aspect-ratio: 1;
   }
 
-  .cell,
-  .tick {
-    background: color-mix(in oklab, var(--seg) calc(var(--glow, 0) * 100%), var(--seg-off));
-  }
-
   .cell {
     border-radius: clamp(1px, 0.3cqi, 2px);
+    background: color-mix(in oklab, var(--seg) calc(var(--glow, 0) * 100%), var(--seg-off));
   }
 
   .cell[data-level="1"] {
@@ -262,68 +268,143 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
 
   .cell[data-level="4"] {
     --glow: 1;
-  }
 
-  :is(.cell[data-level="4"], .tick[data-bright]) {
     box-shadow: var(--seg-glow);
   }
 
-  [data-picked] {
-    outline: 1.5px solid var(--led);
-    outline-offset: 1px;
+  .cell[data-picked] {
+    outline: 1px solid var(--seg);
+    outline-offset: 1.5px;
   }
 
-  .tracks {
+  .chart {
     display: grid;
-    gap: 6px;
+    grid-template-columns: repeat(var(--days), 1fr);
+    gap: clamp(2px, 0.6cqi, 4px);
     touch-action: pan-y;
   }
 
-  .track {
+  .day {
     display: grid;
-    grid-template-columns: min(136px, 26%) repeat(var(--days), 1fr) 36px;
-    align-items: center;
-    gap: clamp(1.5px, 0.4cqi, 2px);
+    grid-template-rows: clamp(96px, 22cqi, 128px) 22px;
+    transition: opacity 140ms;
   }
 
-  .track .label {
+  .chart:has([data-picked]) .day:not([data-picked]) {
+    opacity: 0.35;
+  }
+
+  .bar {
+    display: flex;
+    align-items: end;
+    border-radius: 2px;
+    background: var(--seg-off);
+  }
+
+  .fill {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 2px;
+    width: 100%;
+  }
+
+  .seg {
+    flex-basis: 0;
+    min-height: 2px;
+    background: var(--color);
+  }
+
+  .seg:first-child {
+    border-radius: 0 0 2px 2px;
+  }
+
+  .seg:last-child {
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+  }
+
+  :global(:root:not([data-finish="silver"])) .seg {
+    box-shadow: 0 0 6px color-mix(in srgb, var(--color) 45%, transparent);
+  }
+
+  [data-series="0"] {
+    --color: var(--s0);
+  }
+
+  [data-series="1"] {
+    --color: var(--s1);
+  }
+
+  [data-series="2"] {
+    --color: var(--s2);
+  }
+
+  [data-series="3"] {
+    --color: var(--s3);
+  }
+
+  [data-series="4"] {
+    --color: var(--s4);
+  }
+
+  .tick {
+    position: relative;
+  }
+
+  .tick .label {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    translate: -50%;
     font-size: 9px;
     letter-spacing: 0.1em;
     white-space: nowrap;
     color: var(--seg);
-    opacity: 0.6;
-    transition: opacity 120ms;
+    opacity: 0.45;
   }
 
-  .track:has([data-picked]) .label {
-    opacity: 1;
+  .day:last-child .tick .label {
+    right: 0;
+    left: auto;
+    translate: none;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+    margin: 14px 0 0;
+    padding: 14px 0 0;
+    border-top: 1px solid var(--seg-off);
+    list-style: none;
+  }
+
+  .legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity 140ms;
+  }
+
+  .swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--color);
+  }
+
+  .legend .label {
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    color: var(--seg);
   }
 
   .name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding-right: 10px;
+    opacity: 0.6;
   }
 
-  .sum {
-    text-align: right;
+  .value {
     font-variant-numeric: tabular-nums;
-  }
-
-  .tick {
-    height: 10px;
-    border-radius: 1.5px;
-  }
-
-  .axis {
-    margin-top: 8px;
-  }
-
-  .axis .label {
-    grid-row: 1;
-    width: 0;
-    overflow: visible;
-    opacity: 0.45;
   }
 
   @container (width < 420px) {
@@ -341,34 +422,33 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
     }
 
     .count {
-      font-size: 30px;
+      font-size: 28px;
     }
 
     .date {
       font-size: 14px;
     }
 
-    .track {
-      grid-template-columns: 31% repeat(var(--days), 1fr) 26px;
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 16px;
     }
 
-    .track .label {
-      letter-spacing: 0.04em;
+    .legend li {
+      justify-content: start;
     }
 
-    .name {
-      padding-right: 6px;
-    }
-
-    .axis .label:nth-child(even) {
-      display: none;
+    .legend .value {
+      margin-left: auto;
     }
   }
 
   @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
     .readout,
     .week,
-    .track {
+    .day,
+    .legend {
       animation: fade 420ms var(--ease-out) backwards paused;
     }
 
@@ -376,11 +456,15 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
       animation-delay: calc(sibling-index() * 8ms);
     }
 
-    .track {
-      animation-delay: calc(sibling-index() * 24ms);
+    .day {
+      animation-delay: calc(sibling-index() * 14ms);
     }
 
-    .screen[data-on] :is(.readout, .week, .track) {
+    .legend {
+      animation-delay: 420ms;
+    }
+
+    .screen[data-on] :is(.readout, .week, .day, .legend) {
       animation-play-state: running;
     }
   }
