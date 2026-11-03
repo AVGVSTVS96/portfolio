@@ -1,10 +1,11 @@
 ---
 import activity from "../data/activity.json";
-import { weeks as all } from "../lib/data";
+import Grouped from "./Grouped.astro";
+import { contributions, weeks } from "../lib/data";
 
-const WEEKS = 52;
 const HUES = 8;
 const GAP = 3;
+const LEAD = 4;
 
 const digits = new Intl.NumberFormat("en-US");
 const month = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
@@ -23,9 +24,8 @@ const medium = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric"
 const plural = (count: number, word: string) => (count === 1 ? word : `${word}s`);
 const sum = (counts: number[]) => counts.reduce((a, b) => a + b, 0);
 
-const weeks = all.slice(-WEEKS);
-const half = WEEKS / 2;
-const year = sum(weeks.flat().map(({ count }) => count));
+const half = weeks.length / 2;
+const year = contributions.total.lastYear;
 
 const opens = (week: number) => weeks[week]?.some(({ date }) => date.endsWith("-01")) ?? false;
 
@@ -37,7 +37,9 @@ const months = (from: number, to: number) => {
     const next = starts[i + 1];
     const previous = starts[i - 1];
 
-    return (week !== from || next === undefined || room(next) - week >= GAP) && (previous === undefined || room(week) - previous >= GAP);
+    const lead = week !== from || opens(week) || next === undefined || room(next) - week >= LEAD;
+
+    return lead && (previous === undefined || room(week) - previous >= GAP);
   });
 
   return kept.map((week) => ({
@@ -47,8 +49,8 @@ const months = (from: number, to: number) => {
   }));
 };
 
-const wide = months(0, WEEKS);
-const narrow = [...months(0, half), ...months(half, WEEKS)];
+const wide = months(0, weeks.length);
+const narrow = [...months(0, half), ...months(half, weeks.length)];
 
 const days = activity.days.map((entry) => new Date(entry));
 const daily: Record<string, number[]> = activity.daily;
@@ -72,11 +74,6 @@ const peak = Math.max(...totals, 1);
 const step = [1, 10, 100, 1000].flatMap((p) => [1, 2, 5].map((m) => m * p)).find((s) => s * 3 >= peak) ?? peak;
 const grid = Array.from({ length: Math.floor(peak / step) }, (_, i) => (i + 1) * step);
 
-const edges = new Map([
-  [0, "start"],
-  [days.length - 1, "end"],
-]);
-
 const ticks = new Map(
   days
     .map((day, i) => ({ day, i }))
@@ -85,7 +82,7 @@ const ticks = new Map(
       const previous = marks[n - 1]?.day;
       const text = previous && month.format(previous) === month.format(day) ? String(day.getUTCDate()) : short.format(day);
 
-      return [i, { text, edge: edges.get(i) }];
+      return [i, { text, end: i === days.length - 1 }];
     }),
 );
 
@@ -95,15 +92,15 @@ const others = (pick: (counts: number[]) => number) => {
     .filter(({ count }) => count > 0)
     .toSorted((a, b) => b.count - a.count);
 
-  const named = shown.slice(0, 3).map(({ name, count }) => `${name} ${digits.format(count)}`);
+  const named = shown.slice(0, 3).map(({ name, count }) => `${name.length > 16 ? `${name.slice(0, 15)}…` : name}\u00A0${digits.format(count)}`);
 
-  return shown.length > 3 ? [...named, `${shown.length - 3} more`].join(" · ") : named.join(" · ");
+  return shown.length > 3 ? [...named, `${shown.length - 3}\u00A0more`].join(" · ") : named.join(" · ");
 };
 ---
 
 <div class="activity">
   <figure>
-    <figcaption><span class="dot">01</span><span class="label">Last 12 months</span></figcaption>
+    <figcaption><span class="index label">01</span><span class="label">Last 12 months</span></figcaption>
     <div
       class="screen"
       data-readout
@@ -112,12 +109,12 @@ const others = (pick: (counts: number[]) => number) => {
       aria-label="Contributions in the last 12 months. Arrow keys step through days."
     >
       <p class="readout" aria-live="polite">
-        <span class="count dot lit" data-show="count" data-idle={digits.format(year)}>{digits.format(year)}</span>
+        <span class="count dot lit" data-show="count" data-group data-idle={digits.format(year)}><Grouped text={digits.format(year)} /></span>
         <span class="unit label" data-show="unit" data-idle="contributions">contributions</span>
         <span class="date label" data-show="date" data-idle=""></span>
         <span class="date label" data-show="day" data-idle=""></span>
       </p>
-      <div class="calendar" style={`--weeks: ${WEEKS}; --half: ${half}`}>
+      <div class="calendar" style={`--weeks: ${weeks.length}; --half: ${half}`}>
         {
           [0, 1].map((band) => (
             <span class="weekdays" data-band={band}>
@@ -179,7 +176,7 @@ const others = (pick: (counts: number[]) => number) => {
   </figure>
 
   <figure>
-    <figcaption><span class="dot">02</span><span class="label">Last 30 days, by project</span></figcaption>
+    <figcaption><span class="index label">02</span><span class="label">Last 30 days, by project</span></figcaption>
     <div
       class="screen"
       data-readout
@@ -189,8 +186,8 @@ const others = (pick: (counts: number[]) => number) => {
       aria-label="Contributions per project in the last 30 days. Arrow keys step through days."
     >
       <p class="readout" aria-live="polite">
-        <span class="count dot lit" data-show="count" data-idle={digits.format(sum(totals))}
-          >{digits.format(sum(totals))}</span
+        <span class="count dot lit" data-show="count" data-group data-idle={digits.format(sum(totals))}
+          ><Grouped text={digits.format(sum(totals))} /></span
         >
         <span class="unit label" data-show="unit" data-idle="contributions">contributions</span>
         <span class="date label" data-show="date" data-idle=""></span>
@@ -233,7 +230,7 @@ const others = (pick: (counts: number[]) => number) => {
                     )}
                   </span>
                 </span>
-                <span class="tick" data-edge={ticks.get(i)?.edge}>
+                <span class="tick" data-end={ticks.get(i)?.end ? "" : undefined}>
                   {ticks.has(i) && <span class="label">{ticks.get(i)?.text}</span>}
                 </span>
               </span>
@@ -244,52 +241,83 @@ const others = (pick: (counts: number[]) => number) => {
       <ul class="legend">
         {
           series.map(({ name, counts, hue, kind }, s) => (
-            <li data-kind={kind} data-series={s} style={`--hue: ${hue}`}>
-              <span class="swatch" />
-              <span class="label name">{name}</span>
-              <span class="label value" data-show={`s${s}`} data-idle={digits.format(sum(counts))}>
-                {digits.format(sum(counts))}
-              </span>
-              {kind === "other" && (
-                <span class="label members" data-show="others" data-idle={others(sum)}>
-                  {others(sum)}
+            <li style={`--hue: ${hue}`}>
+              <button type="button" data-kind={kind} data-series={s} aria-pressed="false">
+                <span class="swatch" />
+                <span class="label name">{name}</span>
+                <span class="label value" data-show={`s${s}`} data-idle={digits.format(sum(counts))}>
+                  {digits.format(sum(counts))}
                 </span>
-              )}
+              </button>
             </li>
           ))
         }
       </ul>
+      <p class="members">
+        <span class="swatch" style="--hue: var(--c-other)" />
+        <span class="label" data-show="others" data-idle={others(sum)}>
+          {others(sum)}
+        </span>
+      </p>
     </div>
   </figure>
 </div>
 
 <script>
-  for (const root of document.querySelectorAll<HTMLElement>("[data-solo-root]")) {
+  const wire = (root: HTMLElement) => {
     const segs = root.querySelectorAll<HTMLElement>(".seg");
+    const keys = root.querySelectorAll<HTMLButtonElement>(".legend button");
 
-    const solo = (series?: string) => {
-      for (const seg of segs) {
-        seg.toggleAttribute("data-dim", series !== undefined && seg.dataset.series !== series);
+    const solo = (series = root.dataset.solo) => {
+      for (const mark of [...segs, ...keys]) {
+        mark.toggleAttribute("data-dim", series !== undefined && mark.dataset.series !== series);
       }
     };
 
-    for (const item of root.querySelectorAll<HTMLElement>(".legend li")) {
-      item.addEventListener("pointerenter", () => solo(item.dataset.series));
-      item.addEventListener("pointerleave", () => solo());
+    for (const key of keys) {
+      key.addEventListener("click", () => {
+        if (root.dataset.solo === key.dataset.series) {
+          delete root.dataset.solo;
+        } else {
+          root.dataset.solo = key.dataset.series;
+        }
+
+        for (const other of keys) {
+          other.ariaPressed = String(other.dataset.series === root.dataset.solo);
+        }
+
+        solo();
+      });
+
+      key.addEventListener("pointerenter", (event) => {
+        if (event.pointerType === "mouse") {
+          solo(key.dataset.series);
+        }
+      });
+
+      key.addEventListener("pointerleave", (event) => {
+        if (event.pointerType === "mouse") {
+          solo();
+        }
+      });
     }
+  };
+
+  for (const root of document.querySelectorAll<HTMLElement>("[data-solo-root]")) {
+    wire(root);
   }
 </script>
 
 <style>
   .activity {
-    --c0: #5b9cf5;
-    --c1: #f07a45;
-    --c2: #a08cf2;
-    --c3: #e8b23a;
-    --c4: #e47fb5;
-    --c5: #8fcf4f;
-    --c6: #6fd3f0;
-    --c7: #ef5f5f;
+    --c0: #4490fe;
+    --c1: #fb9d59;
+    --c2: #c167fb;
+    --c3: #4ee11b;
+    --c4: #23dafc;
+    --c5: #ff1459;
+    --c6: #fd95dc;
+    --c7: #f4d916;
     --c-other: color-mix(in oklab, var(--ink) 30%, var(--screen));
     --c-private: repeating-linear-gradient(
       -45deg,
@@ -303,14 +331,14 @@ const others = (pick: (counts: number[]) => number) => {
   }
 
   :root[data-finish="silver"] .activity {
-    --c0: #1f5fc8;
-    --c1: #b8420c;
-    --c2: #6440c8;
-    --c3: #8a5f00;
-    --c4: #b0307a;
-    --c5: #3f7208;
-    --c6: #00709f;
-    --c7: #b3201f;
+    --c0: #0248ca;
+    --c1: #d66919;
+    --c2: #6f049f;
+    --c3: #118d29;
+    --c4: #0b7a9a;
+    --c5: #b00727;
+    --c6: #e10195;
+    --c7: #7a5c00;
     --c-other: color-mix(in oklab, var(--ink) 22%, var(--screen));
     --c-private: repeating-linear-gradient(
       -45deg,
@@ -330,13 +358,12 @@ const others = (pick: (counts: number[]) => number) => {
     margin-bottom: 12px;
   }
 
-  figcaption .dot {
-    font-size: 11px;
-    color: var(--ink-3);
-  }
-
   figcaption .label {
     color: var(--ink-2);
+  }
+
+  figcaption .index {
+    color: var(--ink-3);
   }
 
   figcaption::after {
@@ -375,6 +402,10 @@ const others = (pick: (counts: number[]) => number) => {
 
   .unit {
     opacity: 0.6;
+  }
+
+  .count :global(.comma) {
+    margin-inline: -0.04em -0.26em;
   }
 
   .date {
@@ -606,12 +637,7 @@ const others = (pick: (counts: number[]) => number) => {
     opacity: 0.7;
   }
 
-  .tick[data-edge="start"] .label {
-    left: 0;
-    translate: 0;
-  }
-
-  .tick[data-edge="end"] .label {
+  .tick[data-end] .label {
     right: 0;
     left: auto;
     translate: 0;
@@ -629,22 +655,28 @@ const others = (pick: (counts: number[]) => number) => {
   }
 
   .legend li {
+    min-width: 0;
+  }
+
+  .legend button {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-width: 0;
-    cursor: default;
+    width: 100%;
+    margin: -4px 0;
+    padding: 4px 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
     transition: opacity 140ms;
   }
 
-  .legend li[data-kind="private"] {
-    grid-column: 1;
-  }
-
-  .legend li[data-kind="other"] {
-    flex-wrap: wrap;
-    grid-column: 2 / -1;
-    row-gap: 8px;
+  .legend button[data-dim],
+  .legend button:has(.value:empty) {
+    opacity: 0.4;
   }
 
   .swatch {
@@ -666,25 +698,28 @@ const others = (pick: (counts: number[]) => number) => {
     font-variant-numeric: tabular-nums;
   }
 
-  li[data-kind="other"] .value {
-    margin-left: 0;
-  }
-
   .value:empty::before {
     content: "–";
   }
 
-  .legend li:has(.value:empty) {
-    opacity: 0.4;
+  .members {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-height: 1.6em;
+    margin: 14px 0 0;
+    font-size: 10px;
+    line-height: 1.6;
   }
 
-  .members {
-    flex-basis: 100%;
-    min-height: 1lh;
-    padding-left: 16px;
-    line-height: 1.5;
+  .members .label {
+    line-height: 1.6;
     white-space: normal;
-    opacity: 0.5;
+    opacity: 0.55;
+  }
+
+  .members .swatch {
+    translate: 0 -1px;
   }
 
   @container (width < 480px) {
@@ -720,12 +755,12 @@ const others = (pick: (counts: number[]) => number) => {
       column-gap: 18px;
     }
 
-    .legend li[data-kind="other"] {
-      grid-column: 1 / -1;
-    }
-
     .legend .label {
       letter-spacing: 0.05em;
+    }
+
+    .members {
+      min-height: 3.2em;
     }
 
     .date[data-show="date"] {

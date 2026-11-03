@@ -3,6 +3,28 @@ const tipAt = (target: EventTarget | null) =>
     ? (target.closest<HTMLElement>("[data-tip]") ?? undefined)
     : undefined;
 
+const write = (slot: HTMLElement, text: string) => {
+  if (slot.dataset.group === undefined) {
+    slot.textContent = text;
+
+    return;
+  }
+
+  slot.replaceChildren(
+    ...text.split(",").flatMap((part, i) => {
+      if (i === 0) {
+        return [part];
+      }
+
+      const comma = document.createElement("span");
+      comma.className = "comma";
+      comma.textContent = ",";
+
+      return [comma, part];
+    })
+  );
+};
+
 for (const display of document.querySelectorAll<HTMLElement>(
   "[data-readout]"
 )) {
@@ -26,8 +48,10 @@ for (const display of document.querySelectorAll<HTMLElement>(
 
     for (const slot of slots) {
       const key = slot.dataset.show ?? "";
-      slot.textContent =
-        (source ? source.dataset[key] : undefined) ?? slot.dataset.idle ?? "";
+      write(
+        slot,
+        (source ? source.dataset[key] : undefined) ?? slot.dataset.idle ?? ""
+      );
     }
   };
 
