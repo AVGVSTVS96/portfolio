@@ -3,831 +3,360 @@ import activity from "../data/activity.json";
 import Grouped from "./Grouped.astro";
 import { contributions, weeks } from "../lib/data";
 
-const HUES = 7;
-const ROWS = 24;
-const GAP = 3;
-
-const digits = new Intl.NumberFormat("en-US");
+const format = new Intl.NumberFormat("en-US");
 const month = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
 const short = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-
-const long = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-const medium = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+const long = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 const plural = (count: number, word: string) => (count === 1 ? word : `${word}s`);
-const sum = (counts: number[]) => counts.reduce((a, b) => a + b, 0);
 
-const half = weeks.length / 2;
-const year = contributions.total.lastYear;
+const total = format.format(contributions.total.lastYear);
+const padding = 7 - (weeks[0]?.length ?? 7);
+const half = Math.ceil(weeks.length / 2);
 
-const opens = (week: number) => weeks[week]?.some(({ date }) => date.endsWith("-01")) ?? false;
+const date = (week: number, at: number) => new Date(weeks[week]?.at(at)?.date ?? "");
+const startsMonth = (week: number) => date(week, -1).getUTCDate() <= 7;
 
-const months = (from: number, to: number) => {
-  const starts = Array.from({ length: to - from }, (_, i) => from + i).filter((week) => week === 0 || opens(week));
-  const room = (week: number) => Math.min(week, to - GAP);
-  const kept = starts.filter((week, i) => i === 0 || room(week) - (starts[i - 1] ?? 0) >= GAP);
+const labelled = (week: number, first: number, end: number) =>
+  week <= end - 4 && (startsMonth(week) || (week === first && !startsMonth(week + 1) && !startsMonth(week + 2)));
 
-  return kept.map((week) => ({
+const columns = weeks.map((week, index) => {
+  const first = index < half ? 0 : half;
+
+  return {
     week,
-    text: month.format(new Date(weeks[week]?.at(-1)?.date ?? "")),
-    after: week > to - GAP ? to - 1 - week : undefined,
-  }));
-};
-
-const wide = months(0, weeks.length);
-const narrow = [...months(0, half), ...months(half, weeks.length)];
+    label: month.format(date(index, startsMonth(index) ? -1 : 0)),
+    wide: labelled(index, 0, weeks.length),
+    narrow: labelled(index, first, first === 0 ? half : weeks.length),
+  };
+});
 
 const days = activity.days.map((entry) => new Date(entry));
 const daily: Record<string, number[]> = activity.daily;
-const ranked = Object.entries(daily).map(([name, counts]) => ({ name, counts }));
-const tail = ranked.slice(HUES);
-const at = (counts: number[], i: number) => counts[i] ?? 0;
 
-const series = [
-  ...ranked.slice(0, HUES).map(({ name, counts }, hue) => ({ name, counts, hue: `var(--c${hue})` })),
-  { name: "private", counts: activity.private, hue: "var(--c-private)" },
-  {
-    name: "other",
-    counts: days.map((_, i) => sum(tail.map(({ counts }) => at(counts, i)))),
-    hue: "var(--c-other)",
-  },
-].filter(({ counts }) => sum(counts) > 0);
+const tracks = Object.keys(activity.repos)
+  .map((id) => ({ id, counts: daily[id] ?? [] }))
+  .map(({ id, counts }) => ({ id, counts, sum: counts.reduce((a, b) => a + b, 0) }))
+  .filter(({ sum }) => sum > 0)
+  .toSorted((a, b) => b.sum - a.sum);
 
-const totals = days.map((_, i) => sum(series.map(({ counts }) => at(counts, i))));
-const peak = Math.max(...totals, 1);
-const unit = [1, 10, 100, 1000].flatMap((p) => [1, 2, 5].map((m) => m * p)).find((u) => u * ROWS >= peak) ?? peak;
-const rows = Math.ceil(peak / unit);
-const step = [2, 5, 10, 20].map((n) => n * unit).find((value) => value * 3 >= peak) ?? peak;
-const grid = Array.from({ length: Math.floor((rows * unit) / step) + 1 }, (_, i) => i * step);
-
-const cells = days.map((_, i) => {
-  const total = at(totals, i);
-  const lit = total > 0 ? Math.max(1, Math.round(total / unit)) : 0;
-  const shares = series.map(({ counts }, s) => ({ s, exact: (at(counts, i) / (total || 1)) * lit }));
-  const given = shares.map(({ exact }) => Math.floor(exact));
-  const spare = lit - sum(given);
-
-  for (const { s } of shares.toSorted((a, b) => (b.exact % 1) - (a.exact % 1)).slice(0, spare)) {
-    given[s] = (given[s] ?? 0) + 1;
-  }
-
-  return [
-    ...given.flatMap((n, s) => Array.from({ length: n }, () => s)),
-    ...Array.from({ length: rows - lit }, () => -1),
-  ];
-});
-
-const ticks = new Map(
-  days
-    .map((day, i) => ({ day, i }))
-    .filter(({ i }) => (days.length - 1 - i) % 7 === 0)
-    .map(({ day, i }, n, marks) => {
-      const previous = marks[n - 1]?.day;
-      const text = previous && month.format(previous) === month.format(day) ? String(day.getUTCDate()) : short.format(day);
-
-      return [i, { text, end: i === days.length - 1 }];
-    }),
-);
-
-const short16 = (name: string) => (name.length > 16 ? `${name.slice(0, 15)}…` : name).replaceAll("-", "\u2011");
-
-const others = (pick: (counts: number[]) => number) => {
-  const shown = tail
-    .flatMap(({ name, counts }) => (pick(counts) > 0 ? [{ name, count: pick(counts) }] : []))
-    .toSorted((a, b) => b.count - a.count);
-
-  const named = shown.slice(0, 3).map(({ name, count }) => `${short16(name)}\u00A0${digits.format(count)}`);
-  const more = shown.length > 3 ? ` and ${shown.length - 3} more` : "";
-
-  return named.length > 0 ? `Other: ${named.join(", ")}${more}` : "";
-};
+const commits = format.format(tracks.reduce((all, { sum }) => all + sum, 0));
+const peak = Math.max(...tracks.flatMap(({ counts }) => counts), 1);
+const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count / peak));
 ---
 
 <div class="activity">
-  <figure>
-    <figcaption><span class="index label">01</span><span class="label">Last 12 months</span></figcaption>
-    <div
-      class="screen"
-      data-readout
-      data-boot
-      tabindex="0"
-      aria-label="Contributions in the last 12 months. Arrow keys step through days."
-    >
-      <p class="readout" aria-live="polite">
-        <span class="count dot lit" data-show="count" data-group data-idle={digits.format(year)}><Grouped text={digits.format(year)} /></span>
-        <span class="unit label" data-show="unit" data-idle="contributions">contributions</span>
-        <span class="date label" data-show="date" data-idle=""></span>
-        <span class="date label" data-show="day" data-idle=""></span>
+  <div class="screen" data-readout data-boot>
+    <div class="readout">
+      <p>
+        <span class="count dot lit" data-show="count" data-group data-idle={total}><Grouped text={total} /></span>
+        <span class="unit" data-show="unit" data-idle="contributions">contributions</span>
       </p>
-      <div class="calendar" style={`--weeks: ${weeks.length}; --half: ${half}`}>
-        {
-          [0, 1].map((band) => (
-            <span class="weekdays" data-band={band}>
-              <span />
-              {["", "Mon", "", "Wed", "", "Fri", ""].map((day) => (
-                <span class="label">{day}</span>
-              ))}
-            </span>
-          ))
-        }
-        {
-          weeks.map((week, index) => (
-            <div class="week" style={`--i: ${index}; --band: ${Math.floor(index / half)}`}>
-              <span class="month">
-                {wide
-                  .filter((mark) => mark.week === index)
-                  .map(({ text, after }) => (
-                    <span
-                      class="label"
-                      data-mode="wide"
-                      data-end={after === undefined ? undefined : ""}
-                      style={after === undefined ? undefined : `--after: ${after}`}
-                    >
-                      {text}
-                    </span>
-                  ))}
-                {narrow
-                  .filter((mark) => mark.week === index)
-                  .map(({ text, after }) => (
-                    <span
-                      class="label"
-                      data-mode="narrow"
-                      data-end={after === undefined ? undefined : ""}
-                      style={after === undefined ? undefined : `--after: ${after}`}
-                    >
-                      {text}
-                    </span>
-                  ))}
-              </span>
-              {week.map((entry) => (
-                <span
-                  class="cell"
-                  data-level={entry.level}
-                  data-tip
-                  data-count={digits.format(entry.count)}
-                  data-unit={plural(entry.count, "contribution")}
-                  data-date={long.format(new Date(entry.date))}
-                  data-day={medium.format(new Date(entry.date))}
-                />
-              ))}
-            </div>
-          ))
-        }
-      </div>
-      <p class="key label" aria-hidden="true">
-        Less{[0, 1, 2, 3, 4].map((level) => <span class="cell" data-level={level} />)}More
-      </p>
+      <span class="when" data-show="date" data-idle="Last 12 months">Last 12 months</span>
     </div>
-  </figure>
-
-  <figure>
-    <figcaption><span class="index label">02</span><span class="label">Last 30 days, by project</span></figcaption>
-    <div
-      class="screen"
-      data-readout
-      data-boot
-      data-solo-root
-      tabindex="0"
-      aria-label="Contributions per project in the last 30 days. Arrow keys step through days."
-    >
-      <p class="readout" aria-live="polite">
-        <span class="count dot lit" data-show="count" data-group data-idle={digits.format(sum(totals))}
-          ><Grouped text={digits.format(sum(totals))} /></span
-        >
-        <span class="unit label" data-show="unit" data-idle="contributions">contributions</span>
-        <span class="date label" data-show="date" data-idle=""></span>
-        <span class="date label" data-show="day" data-idle=""></span>
-      </p>
-      <div class="plot" style={`--rows: ${rows}`}>
-        {
-          grid.map((value) => (
-            <span class="rule label" style={`--at: ${value / unit}`}>
-              {digits.format(value)}
+    <div class="calendar" style={`--weeks: ${weeks.length}; --half: ${half}`}>
+      {
+        columns.map(({ week, label, wide, narrow }, index) => (
+          <div class="week">
+            <span class="month" data-wide={wide ? "" : undefined} data-narrow={narrow ? "" : undefined}>
+              {wide || narrow ? label : ""}
             </span>
-          ))
-        }
-        <div class="chart" style={`--days: ${days.length}`}>
-          {
-            days.map((entry, i) => (
+            {index === 0 && Array.from({ length: padding }, () => <span />)}
+            {week.map((entry) => (
               <span
-                class="day"
+                class="cell"
+                data-level={entry.level}
                 data-tip
-                data-count={digits.format(at(totals, i))}
-                data-unit={plural(at(totals, i), "contribution")}
-                data-date={long.format(entry)}
-                data-day={medium.format(entry)}
-                data-others={others((counts) => at(counts, i))}
-                {...Object.fromEntries(
-                  series.map(({ counts }, s) => [`data-s${s}`, at(counts, i) ? digits.format(at(counts, i)) : ""]),
-                )}
-              >
-                <span class="bar">
-                  {cells[i]?.map((s) =>
-                    s < 0 ? (
-                      <span class="seg" />
-                    ) : (
-                      <span
-                        class="seg"
-                        data-series={s}
-                        style={`--hue: ${series[s]?.hue}`}
-                      />
-                    ),
-                  )}
-                </span>
-                <span class="tick" data-end={ticks.get(i)?.end ? "" : undefined}>
-                  {ticks.has(i) && <span class="label">{ticks.get(i)?.text}</span>}
-                </span>
-              </span>
-            ))
-          }
-        </div>
-      </div>
-      <ul class="legend">
-        {
-          series
-            .map((entry, s) => ({ ...entry, s }))
-            .toSorted((a, b) => sum(b.counts) - sum(a.counts))
-            .map(({ name, counts, hue, s }) => (
-            <li style={`--hue: ${hue}`}>
-              <button type="button" data-series={s} data-name={name} data-total={digits.format(sum(counts))} aria-pressed="false">
-                <span class="swatch" />
-                <span class="label name">{name}</span>
-                <span class="label value" data-show={`s${s}`} data-idle={digits.format(sum(counts))}>
-                  {digits.format(sum(counts))}
-                </span>
-              </button>
-            </li>
-          ))
-        }
-      </ul>
-      <p class="members label" data-series={series.length - 1} data-show="others" data-idle={others(sum)}>
-        {others(sum)}
-      </p>
+                data-count={format.format(entry.count)}
+                data-unit={plural(entry.count, "contribution")}
+                data-date={long.format(new Date(entry.date))}
+              />
+            ))}
+          </div>
+        ))
+      }
     </div>
-  </figure>
+  </div>
+
+  <div class="screen" data-readout data-boot>
+    <div class="readout">
+      <p>
+        <span class="count dot lit" data-show="count" data-group data-idle={commits}><Grouped text={commits} /></span>
+        <span class="unit" data-show="unit" data-idle="commits">commits</span>
+      </p>
+      <span class="when" data-show="date" data-idle="Last 30 days">Last 30 days</span>
+    </div>
+    <div class="tracks" style={`--days: ${days.length}`}>
+      {
+        tracks.map(({ id, counts, sum }) => (
+          <div class="track">
+            <span class="name">{id}</span>
+            {counts.map((count, i) => (
+              <span
+                class="tick"
+                style={`--glow: ${glow(count)}`}
+                data-bright={glow(count) >= 0.75 ? "" : undefined}
+                data-tip
+                data-count={format.format(count)}
+                data-unit={plural(count, "commit")}
+                data-date={`${id} · ${short.format(days[i])}`}
+              />
+            ))}
+            <span class="sum">{format.format(sum)}</span>
+          </div>
+        ))
+      }
+      <div class="track axis">
+        {days.map((entry, i) =>
+          (days.length - 1 - i) % 7 === 0 ? <span style={`grid-column: ${i + 2}`}>{short.format(entry)}</span> : null,
+        )}
+      </div>
+    </div>
+  </div>
 </div>
-
-<script>
-  const wire = (root: HTMLElement) => {
-    const segs = root.querySelectorAll<HTMLElement>(".seg[data-series], .members");
-    const keys = root.querySelectorAll<HTMLButtonElement>(".legend button");
-    const count = root.querySelector<HTMLElement>(".count");
-    const unit = root.querySelector<HTMLElement>(".unit");
-    const base = { count: { ...count?.dataset }, unit: { ...unit?.dataset } };
-
-    const solo = (series = root.dataset.solo) => {
-      const key = [...keys].find((each) => each.dataset.series === series);
-
-      for (const mark of [...segs, ...keys]) {
-        mark.toggleAttribute("data-dim", key !== undefined && mark.dataset.series !== series);
-      }
-
-      if (count && unit) {
-        count.dataset.show = key ? `s${series}` : base.count.show;
-        count.dataset.idle = key ? key.dataset.total : base.count.idle;
-        unit.dataset.show = key ? "solo" : base.unit.show;
-        unit.dataset.idle = key ? key.dataset.name : base.unit.idle;
-      }
-
-      root.dispatchEvent(new Event("refresh"));
-    };
-
-    for (const key of keys) {
-      key.addEventListener("click", () => {
-        if (root.dataset.solo === key.dataset.series) {
-          delete root.dataset.solo;
-        } else {
-          root.dataset.solo = key.dataset.series;
-        }
-
-        for (const other of keys) {
-          other.ariaPressed = String(other.dataset.series === root.dataset.solo);
-        }
-
-        solo();
-      });
-
-      key.addEventListener("pointerenter", (event) => {
-        if (event.pointerType === "mouse") {
-          solo(key.dataset.series);
-        }
-      });
-
-      key.addEventListener("pointerleave", (event) => {
-        if (event.pointerType === "mouse") {
-          solo();
-        }
-      });
-    }
-  };
-
-  const echo = (activity: HTMLElement) => {
-    const tips = [...activity.querySelectorAll<HTMLElement>("[data-tip]")];
-
-    new MutationObserver(() => {
-      const picked = new Set(tips.flatMap((tip) => (tip.dataset.picked === undefined ? [] : [tip.dataset.date])));
-
-      for (const tip of tips) {
-        tip.toggleAttribute("data-echo", tip.dataset.picked === undefined && picked.has(tip.dataset.date));
-      }
-    }).observe(activity, { attributeFilter: ["data-picked"], subtree: true });
-  };
-
-  for (const root of document.querySelectorAll<HTMLElement>("[data-solo-root]")) {
-    wire(root);
-  }
-
-  for (const activity of document.querySelectorAll<HTMLElement>(".activity")) {
-    echo(activity);
-  }
-</script>
 
 <style>
   .activity {
-    --c0: #4490fe;
-    --c1: #fb9d59;
-    --c2: #f2506e;
-    --c3: #c167fb;
-    --c4: #5ccf7c;
-    --c5: #fd95dc;
-    --c6: #ece04e;
-    --lit: var(--seg);
-    --unlit: color-mix(in oklab, var(--lit) 5%, transparent);
-    --c-private: color-mix(in oklab, var(--lit) 42%, transparent);
-    --c-other: color-mix(in oklab, var(--ink) 42%, var(--screen));
-    --gutter: 28px;
-
     display: grid;
-    gap: 56px;
-  }
-
-  :root[data-finish="silver"] .activity {
-    --c0: #0248ca;
-    --c1: #d66919;
-    --c2: #b00727;
-    --c3: #6f049f;
-    --c4: #118d29;
-    --c5: #e10195;
-    --c6: #a07000;
-    --lit: #0c6152;
-    --unlit: color-mix(in oklab, var(--lit) 5%, transparent);
-    --c-private: color-mix(in oklab, var(--lit) 62%, transparent);
-    --c-other: color-mix(in oklab, var(--ink) 38%, var(--screen));
-  }
-
-  figure {
-    margin: 0;
-  }
-
-  figcaption {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-
-  figcaption .label {
-    color: var(--ink-2);
-  }
-
-  figcaption .index {
-    color: var(--ink-3);
-  }
-
-  figcaption::after {
-    flex: 1;
-    height: 1px;
-    content: "";
-    background: var(--line);
+    gap: 28px;
   }
 
   .screen {
-    padding: 20px;
+    padding: 18px 18px 16px;
     container-type: inline-size;
-    touch-action: pan-y;
-  }
-
-  .label {
-    font-size: 10px;
-    line-height: 1;
-    letter-spacing: 0.1em;
-    white-space: nowrap;
-    color: var(--seg);
   }
 
   .readout {
     display: flex;
     align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .readout p {
+    display: flex;
+    align-items: baseline;
     gap: 10px;
-    margin: 0 0 20px;
+    margin: 0;
   }
 
   .count {
-    font-size: 32px;
+    font-size: 34px;
     line-height: 1;
     font-variant-numeric: tabular-nums;
-  }
-
-  .unit {
-    opacity: 0.6;
-  }
-
-  .count:empty::before {
-    content: "0";
   }
 
   .count :global(.comma) {
     margin-inline: -0.04em -0.26em;
   }
 
-  .date {
-    margin-left: auto;
-    font-size: 11px;
-    transition: opacity 160ms var(--ease-out);
+  .unit,
+  .when,
+  .month,
+  .track > span {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--seg);
   }
 
-  .date[data-show="day"] {
-    display: none;
+  .unit,
+  .when {
+    opacity: 0.6;
   }
 
-  .date:empty {
-    opacity: 0;
+  .when {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: right;
   }
 
   .calendar {
     display: grid;
     --gap: clamp(2px, 0.5cqi, 3px);
 
-    grid-template-columns: calc(var(--gutter) - var(--gap)) repeat(var(--weeks), 1fr);
-    grid-template-rows: 18px repeat(7, auto);
+    grid-template-columns: repeat(var(--weeks), 1fr);
     gap: var(--gap);
+    touch-action: pan-y;
   }
 
-  .weekdays,
   .week {
     display: grid;
-    grid-row: 1 / span 8;
-    grid-template-rows: subgrid;
-  }
-
-  .weekdays {
-    grid-column: 1;
-  }
-
-  .weekdays .label {
-    display: flex;
-    align-items: center;
-    height: 0;
-    align-self: center;
-    font-size: 9px;
-    opacity: 0.5;
-  }
-
-  .weekdays[data-band="1"] {
-    display: none;
-  }
-
-  .week {
-    grid-column: calc(var(--i) + 2);
+    gap: var(--gap);
+    align-content: start;
   }
 
   .month {
-    position: relative;
+    height: 14px;
+    width: 0;
+    overflow: visible;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    opacity: 0.45;
   }
 
-  .month .label {
-    position: absolute;
-    top: 0;
-    left: 0;
-    opacity: 0.7;
+  .month:not([data-wide]) {
+    visibility: hidden;
   }
 
-  .month [data-end] {
-    right: calc(var(--after) * -1 * (100% + var(--gap)));
-    left: auto;
+  .week > span:not(.month) {
+    aspect-ratio: 1;
   }
 
-  .month [data-mode="narrow"] {
-    display: none;
+  .cell,
+  .tick {
+    background: color-mix(in oklab, var(--seg) calc(var(--glow, 0) * 100%), var(--seg-off));
   }
 
   .cell {
-    position: relative;
-    aspect-ratio: 1;
-    border-radius: clamp(1px, 0.3cqi, 2px);
-    background: color-mix(in oklab, var(--lit) calc(var(--glow, 0.1) * 100%), var(--screen));
-    outline: 1.5px solid transparent;
-    outline-offset: 1px;
-    transition: outline-color 120ms;
-  }
-
-  .week .cell::after {
-    position: absolute;
-    inset: calc(var(--gap) / -2);
-    content: "";
-  }
-
-  .cell[data-picked] {
-    outline-color: var(--ink);
-  }
-
-  .cell[data-level="0"] {
-    --glow: 0.07;
+    border-radius: 2px;
   }
 
   .cell[data-level="1"] {
-    --glow: 0.36;
+    --glow: 0.3;
   }
 
   .cell[data-level="2"] {
-    --glow: 0.58;
+    --glow: 0.52;
   }
 
   .cell[data-level="3"] {
-    --glow: 0.8;
+    --glow: 0.75;
   }
 
   .cell[data-level="4"] {
     --glow: 1;
+  }
 
+  :is(.cell[data-level="4"], .tick[data-bright]) {
     box-shadow: var(--seg-glow);
   }
 
-  :root[data-finish="silver"] .cell[data-level="0"] {
-    --glow: 0.08;
+  :is(.cell, .tick):is(:hover, [data-picked]) {
+    outline: 1px solid var(--seg);
+    outline-offset: 1px;
   }
 
-  .key {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 3px;
-    margin: 14px 0 0;
-    font-size: 9px;
-    opacity: 0.7;
-  }
-
-  .key .cell {
-    width: 9px;
-  }
-
-  .key .cell:first-child {
-    margin-left: 5px;
-  }
-
-  .key .cell:last-child {
-    margin-right: 5px;
-  }
-
-  .plot {
-    position: relative;
-    --height: clamp(132px, 28cqi, 176px);
-
-    padding-left: var(--gutter);
-  }
-
-  .rule {
-    position: absolute;
-    bottom: calc(22px + var(--at) / var(--rows) * var(--height));
-    left: 0;
-    font-size: 9px;
-    opacity: 0.5;
-    translate: 0 50%;
-  }
-
-  .chart {
+  .tracks {
     display: grid;
-    --gap: clamp(2px, 0.9cqi, 5px);
-
-    grid-template-columns: repeat(var(--days), 1fr);
-    margin-inline: calc(var(--gap) / -2);
-  }
-
-  .day {
-    display: grid;
-    grid-template-rows: var(--height) 22px;
-    padding-inline: calc(var(--gap) / 2);
-  }
-
-  .bar {
-    display: flex;
-    flex-direction: column-reverse;
-    gap: 1.5px;
-    border-radius: 2px;
-    outline: 1.5px solid transparent;
-    outline-offset: 2px;
-    transition: outline-color 120ms;
-  }
-
-  .day[data-picked] .bar {
-    outline-color: var(--ink);
-  }
-
-  .day[data-echo] .bar,
-  .cell[data-echo] {
-    outline-color: color-mix(in oklab, var(--ink) 45%, transparent);
-  }
-
-  .seg {
-    flex: 1;
-    order: 2;
-    border-radius: 1px;
-    background: var(--unlit);
-    transition: background-color 160ms;
-  }
-
-  .seg[data-series] {
-    order: 0;
-    background: var(--hue);
-  }
-
-  .seg[data-dim] {
-    order: 1;
-    background: var(--unlit);
-  }
-
-  :global(:root:not([data-finish="silver"])) .seg[data-series]:not([data-dim]) {
-    box-shadow: 0 0 4px color-mix(in srgb, var(--hue) 40%, transparent);
-  }
-
-  .tick {
-    position: relative;
-  }
-
-  .tick .label {
-    position: absolute;
-    top: 9px;
-    left: 50%;
-    translate: -50%;
-    opacity: 0.7;
-  }
-
-  .tick[data-end] .label {
-    right: 0;
-    left: auto;
-    translate: 0;
-  }
-
-  .legend {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 188px));
-    justify-content: space-between;
-    align-items: start;
-    gap: 10px 24px;
-    margin: 18px 0 0;
-    padding: 16px 0 0;
-    border-top: 1px solid color-mix(in oklab, var(--seg) 10%, transparent);
-    list-style: none;
-  }
-
-  .legend li {
-    min-width: 0;
-  }
-
-  .legend button {
-    display: flex;
-    align-items: center;
     gap: 6px;
-    width: 100%;
-    margin: -4px 0;
-    padding: 4px 0;
-    border: 0;
-    background: none;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-    transition: opacity 140ms;
+    touch-action: pan-y;
   }
 
-  .legend button[data-dim],
-  .legend button:has(.value:empty) {
-    opacity: 0.4;
+  .track {
+    display: grid;
+    grid-template-columns: min(136px, 26%) repeat(var(--days), 1fr) 36px;
+    align-items: center;
+    gap: clamp(1.5px, 0.4cqi, 2px);
   }
 
-  .swatch {
-    flex: none;
-    width: 8px;
-    height: 8px;
-    border-radius: 2px;
-    background: var(--hue);
+  .track > span:not(.tick) {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    opacity: 0.6;
+    transition: opacity 120ms;
   }
 
-  .legend .name {
+  .track:has([data-picked]) > span {
+    opacity: 1;
+  }
+
+  .name {
     overflow: hidden;
     text-overflow: ellipsis;
-    opacity: 0.75;
+    padding-right: 10px;
   }
 
-  .legend .value {
-    min-width: 3ch;
-    margin-left: auto;
-    padding-left: 6px;
+  .sum {
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
 
-  .value:empty::before {
-    content: "–";
+  .tick {
+    height: 10px;
+    border-radius: 1.5px;
   }
 
-  .members[data-dim] {
-    opacity: 0.2;
+  .axis {
+    margin-top: 6px;
   }
 
-  .members {
-    min-height: 1.6em;
-    margin: 14px 0 0;
-    line-height: 1.6;
-    white-space: normal;
-    opacity: 0.55;
+  .axis > span {
+    grid-row: 1;
+    width: 0;
+    overflow: visible;
+    opacity: 0.45;
   }
 
-  @container (width < 480px) {
+  @container (width < 420px) {
     .calendar {
-      grid-template-columns: calc(var(--gutter) - var(--gap)) repeat(var(--half), 1fr);
-      grid-template-rows: 18px repeat(7, auto) 10px 18px repeat(7, auto);
+      grid-template-columns: repeat(var(--half), 1fr);
+      row-gap: 12px;
     }
 
-    .weekdays[data-band="1"] {
-      display: grid;
-      grid-row: 10 / span 8;
+    .month[data-narrow] {
+      visibility: visible;
     }
 
-    .week {
-      grid-row: calc(var(--band) * 9 + 1) / span 8;
-      grid-column: calc(var(--i) - var(--band) * var(--half) + 2);
-    }
-
-    .month [data-mode="wide"] {
-      display: none;
-    }
-
-    .month [data-mode="narrow"] {
-      display: block;
+    .month:not([data-narrow]) {
+      visibility: hidden;
     }
 
     .count {
-      font-size: 28px;
+      font-size: 30px;
     }
 
-    .legend {
-      grid-template-columns: 1fr 1fr;
-      column-gap: 16px;
+    .readout {
+      gap: 12px;
     }
 
-    .legend li:last-child:nth-child(odd) {
-      grid-column: 1 / -1;
+    .readout p {
+      gap: 8px;
     }
 
-    .legend .label {
+    .unit,
+    .when {
+      font-size: 9.5px;
+      letter-spacing: 0.06em;
+    }
+
+    .track {
+      grid-template-columns: 31% repeat(var(--days), 1fr) 26px;
+    }
+
+    .track > span:not(.tick) {
       letter-spacing: 0.04em;
     }
 
-    .members {
-      min-height: 3.2em;
+    .name {
+      padding-right: 6px;
     }
 
-    .date[data-show="date"] {
+    .axis > span:nth-last-child(even) {
       display: none;
-    }
-
-    .date[data-show="day"] {
-      display: block;
     }
   }
 
   @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
     .readout,
     .week,
-    .day,
-    .rule,
-    .key,
-    .legend {
+    .track {
       animation: fade 420ms var(--ease-out) backwards paused;
     }
 
     .week {
-      animation-delay: calc(sibling-index() * 8ms);
+      animation-delay: calc((sibling-count() - sibling-index()) * 8ms);
     }
 
-    .day {
-      animation-delay: calc(sibling-index() * 14ms);
+    .track {
+      animation-delay: calc(sibling-index() * 24ms);
     }
 
-    .key,
-    .legend {
-      animation-delay: 420ms;
-    }
-
-    .screen[data-on] :is(.readout, .week, .day, .rule, .key, .legend) {
+    .screen[data-on] :is(.readout, .week, .track) {
       animation-play-state: running;
     }
   }
