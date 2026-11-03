@@ -3,7 +3,7 @@ import activity from "../data/activity.json";
 import Grouped from "./Grouped.astro";
 import { contributions, weeks } from "../lib/data";
 
-const HUES = 6;
+const HUES = 7;
 const ROWS = 24;
 const GAP = 3;
 
@@ -350,6 +350,7 @@ const others = (pick: (counts: number[]) => number) => {
     --c3: #c167fb;
     --c4: #4ee11b;
     --c5: #fd95dc;
+    --c6: #f4d916;
     --lit: var(--seg);
     --unlit: color-mix(in oklab, var(--lit) 5%, transparent);
     --c-private: color-mix(in oklab, var(--lit) 42%, transparent);
@@ -367,6 +368,7 @@ const others = (pick: (counts: number[]) => number) => {
     --c3: #6f049f;
     --c4: #118d29;
     --c5: #e10195;
+    --c6: #a07000;
     --lit: #0c6152;
     --unlit: color-mix(in oklab, var(--lit) 5%, transparent);
     --c-private: color-mix(in oklab, var(--lit) 62%, transparent);
@@ -668,7 +670,7 @@ const others = (pick: (counts: number[]) => number) => {
 
   .legend {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     align-items: start;
     gap: 10px 24px;
     margin: 18px 0 0;
@@ -684,7 +686,7 @@ const others = (pick: (counts: number[]) => number) => {
   .legend button {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
     margin: -4px 0;
     padding: 4px 0;
@@ -717,8 +719,10 @@ const others = (pick: (counts: number[]) => number) => {
   }
 
   .legend .value {
+    min-width: 3ch;
     margin-left: auto;
-    padding-left: 8px;
+    padding-left: 6px;
+    text-align: right;
     font-variant-numeric: tabular-nums;
   }
 
@@ -764,7 +768,11 @@ const others = (pick: (counts: number[]) => number) => {
 
     .legend {
       grid-template-columns: 1fr 1fr;
-      column-gap: 18px;
+      column-gap: 16px;
+    }
+
+    .legend li:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
     }
 
     .legend .label {
