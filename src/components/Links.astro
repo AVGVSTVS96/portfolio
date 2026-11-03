@@ -162,13 +162,22 @@ const links = [
     };
 
     for (const link of nav.querySelectorAll<HTMLElement>("[data-card]")) {
+      let touch = false;
+      link.addEventListener("pointerdown", (event) => (touch = event.pointerType !== "mouse"));
+      link.addEventListener("click", (event) => {
+        if (touch && !Object.hasOwn(link.dataset, "current")) {
+          event.preventDefault();
+          open(link);
+        }
+      });
       link.addEventListener("pointerenter", (event) => event.pointerType === "mouse" && open(link));
       link.addEventListener("focus", () => link.matches(":focus-visible") && open(link));
       link.addEventListener("blur", close);
     }
 
+    document.addEventListener("pointerdown", (event) => event.target instanceof Node && !nav.contains(event.target) && close());
     card.addEventListener("pointerenter", () => clearTimeout(closing));
-    nav.addEventListener("pointerleave", close);
+    nav.addEventListener("pointerleave", (event) => event.pointerType === "mouse" && close());
     document.addEventListener("keydown", (event) => event.key === "Escape" && close());
   }
 </script>
