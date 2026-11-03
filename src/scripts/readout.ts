@@ -50,7 +50,10 @@ for (const display of document.querySelectorAll<HTMLElement>(
     if (
       tip ||
       event.pointerType === "mouse" ||
-      !(event.target instanceof Element && event.target.closest("button"))
+      !(
+        event.target instanceof Element &&
+        event.target.closest("button, summary")
+      )
     ) {
       show(tip);
     }

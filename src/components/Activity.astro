@@ -13,8 +13,7 @@ const plural = (count: number, word: string) => (count === 1 ? word : `${word}s`
 const sum = (counts: number[]) => counts.reduce((a, b) => a + b, 0);
 
 const padding = 7 - (weeks[0]?.length ?? 7);
-const split = Math.floor(weeks.length / 2);
-const columns = weeks.length - split;
+const split = Math.ceil(weeks.length / 2);
 
 const last = (week: number) => new Date(weeks[week]?.at(-1)?.date ?? "");
 const startsMonth = (week: number) => last(week).getUTCDate() <= 7;
@@ -76,7 +75,17 @@ const step = [1, 10, 100, 1000].flatMap((p) => [1, 2, 5].map((m) => m * p)).find
 const scale = Math.max(peak, Math.floor(peak / step) * step);
 const grid = Array.from({ length: Math.floor(scale / step) }, (_, i) => (i + 1) * step);
 
-const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && (days.length - 1 - i) % 7 === 0)));
+const marks = days.filter((_, i) => i === days.length - 1 || (i % 7 === 0 && i < days.length - 7));
+
+const ticks = new Map(
+  marks.map((day, n) => {
+    const previous = marks[n - 1];
+
+    return [day, previous && month.format(previous) === month.format(day) ? String(day.getUTCDate()) : short.format(day)];
+  }),
+);
+
+const others = tail.map(({ name, counts }) => `${name}\u00A0${digits.format(sum(counts))}`).join("\u00A0· ");
 ---
 
 <div class="activity">
@@ -90,15 +99,13 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
       aria-label="Contributions in the last 12 months. Arrow keys step through days."
     >
       <p class="readout" aria-live="polite">
-        <span class="count dot lit"
-          ><span data-show="count" data-idle={digits.format(contributions.total.lastYear)}
-            >{digits.format(contributions.total.lastYear)}</span
-          ></span
+        <span class="count dot lit" data-show="count" data-idle={digits.format(contributions.total.lastYear)}
+          >{digits.format(contributions.total.lastYear)}</span
         >
         <span class="unit label" data-show="unit" data-idle="contributions">contributions</span>
         <span class="date dot lit" data-show="date" data-idle=""></span>
       </p>
-      <div class="calendar" style={`--weeks: ${weeks.length}; --columns: ${columns}; --lead: ${columns - split + 1}`}>
+      <div class="calendar" style={`--weeks: ${weeks.length}; --columns: ${split}`}>
         {
           weeks.map((week, index) => (
             <div class="week">
@@ -144,7 +151,9 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
       aria-label="Contributions per project in the last 30 days. Arrow keys step through days."
     >
       <p class="readout" aria-live="polite">
-        <span class="count dot lit"><span data-show="count" data-idle={digits.format(sum(totals))}>{digits.format(sum(totals))}</span></span>
+        <span class="count dot lit" data-show="count" data-idle={digits.format(sum(totals))}
+          >{digits.format(sum(totals))}</span
+        >
         <span class="unit label" data-show="unit" data-idle="contributions">contributions</span>
         <span class="date dot lit" data-show="date" data-idle=""></span>
       </p>
@@ -168,12 +177,21 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
                 {...Object.fromEntries(series.map(({ counts }, s) => [`data-s${s}`, counts[i] ? digits.format(counts[i]) : ""]))}
               >
                 <span class="bar">
-                  {series.map(({ counts, hue }) => {
-                    const share = ((counts[i] ?? 0) / scale) * 100;
-                    return share > 0 ? <span class="seg" data-hue={hue} data-split={share >= 3 ? "" : undefined} style={`height: ${share}%`} /> : null;
-                  })}
+                  <span class="stack" style={`height: ${((totals[i] ?? 0) / scale) * 100}%`}>
+                    {series.map(({ counts, hue }) => {
+                      const share = ((counts[i] ?? 0) / scale) * 100;
+                      return share > 0 ? (
+                        <span
+                          class="seg"
+                          data-hue={hue}
+                          data-split={share >= 3 ? "" : undefined}
+                          style={`height: ${((counts[i] ?? 0) / (totals[i] || 1)) * 100}%`}
+                        />
+                      ) : null;
+                    })}
+                  </span>
                 </span>
-                <span class="tick">{ticks.has(i) && <span class="label">{short.format(entry)}</span>}</span>
+                <span class="tick">{ticks.has(entry) && <span class="label">{ticks.get(entry)}</span>}</span>
               </span>
             ))
           }
@@ -181,15 +199,32 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
       </div>
       <ul class="legend">
         {
-          series.map(({ name, counts, hue }, s) => (
-            <li data-hue={hue}>
-              <span class="swatch" />
-              <span class="label name">{name}</span>
-              <span class="label value" data-show={`s${s}`} data-idle={digits.format(sum(counts))}>
-                {digits.format(sum(counts))}
-              </span>
-            </li>
-          ))
+          series
+            .map((entry, s) => ({ ...entry, s }))
+            .toSorted((a, b) => Number(a.hue === "more") - Number(b.hue === "more"))
+            .map(({ name, counts, hue, s }) => {
+              const key = (
+                <>
+                  <span class="swatch" />
+                  <span class="label name">{name}</span>
+                  <span class="label value" data-show={`s${s}`} data-idle={digits.format(sum(counts))}>
+                    {digits.format(sum(counts))}
+                  </span>
+                </>
+              );
+              return (
+                <li data-hue={hue}>
+                  {hue === "more" ? (
+                    <details>
+                      <summary>{key}</summary>
+                      <p class="label members">{others}</p>
+                    </details>
+                  ) : (
+                    key
+                  )}
+                </li>
+              );
+            })
         }
       </ul>
     </div>
@@ -206,7 +241,7 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     --h5: #a5c94e;
     --h6: #a98cf0;
     --h-more: color-mix(in oklab, var(--ink) 34%, var(--screen));
-    --h-private: color-mix(in oklab, var(--seg) 24%, var(--screen));
+    --h-private: color-mix(in oklab, var(--seg) 70%, transparent);
 
     display: grid;
     gap: 48px;
@@ -221,7 +256,7 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     --h5: #557a00;
     --h6: #6b46c1;
     --h-more: color-mix(in oklab, var(--ink) 40%, var(--screen));
-    --h-private: color-mix(in oklab, var(--seg) 16%, var(--screen));
+    --h-private: color-mix(in oklab, var(--seg) 60%, transparent);
   }
 
   figure {
@@ -265,21 +300,8 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
   }
 
   .count {
-    display: inline-grid;
-    justify-items: end;
     font-size: 32px;
     line-height: 1;
-  }
-
-  .count::before,
-  .count > span {
-    grid-area: 1 / 1;
-  }
-
-  .count::before {
-    content: "8888";
-    color: var(--seg-off);
-    text-shadow: none;
   }
 
   .unit {
@@ -295,7 +317,7 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
   }
 
   .label {
-    font-size: 9.5px;
+    font-size: 10px;
     line-height: 1;
     letter-spacing: 0.1em;
     white-space: nowrap;
@@ -325,7 +347,7 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     position: absolute;
     top: 0;
     left: 0;
-    opacity: 0.55;
+    opacity: 0.7;
   }
 
   .month [data-end] {
@@ -397,7 +419,7 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     position: absolute;
     left: 0;
     translate: 0 -50%;
-    opacity: 0.45;
+    opacity: 0.6;
   }
 
   .chart {
@@ -415,8 +437,23 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
 
   .bar {
     display: flex;
-    flex-direction: column-reverse;
+    align-items: end;
     background: linear-gradient(var(--seg-off), var(--seg-off)) bottom / 100% 2px no-repeat;
+  }
+
+  .stack {
+    display: flex;
+    flex-direction: column-reverse;
+    width: 100%;
+    border-radius: 2px 2px 0 0;
+    outline: 1.5px solid transparent;
+    outline-offset: 1.5px;
+    transition: outline-color 120ms;
+  }
+
+  .day[data-picked] .stack {
+    min-height: 2px;
+    outline-color: var(--ink);
   }
 
   .seg {
@@ -469,28 +506,11 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
   }
 
   [data-hue="private"] {
-    --hue: var(--h-private);
+    --hue: repeating-linear-gradient(-45deg, var(--h-private) 0 1.5px, transparent 1.5px 3.5px);
   }
 
   .tick {
     position: relative;
-  }
-
-  .tick::before {
-    position: absolute;
-    top: 3px;
-    right: 0;
-    left: 0;
-    height: 2px;
-    content: "";
-    border-radius: 1px;
-    background: var(--ink);
-    opacity: 0;
-    transition: opacity 120ms;
-  }
-
-  .day[data-picked] .tick::before {
-    opacity: 1;
   }
 
   .tick .label {
@@ -498,26 +518,15 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
     top: 9px;
     left: 50%;
     translate: -50%;
-    opacity: 0.55;
-  }
-
-  .day:first-child .tick .label {
-    left: calc(var(--gap) / 2);
-    translate: none;
-  }
-
-  .day:last-child .tick .label {
-    right: calc(var(--gap) / 2 - 0.1em);
-    left: auto;
-    translate: none;
+    opacity: 0.7;
   }
 
   .legend {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
     margin: 16px 0 0;
-    padding: 12px 0 0;
+    padding: 14px 0 0;
     border-top: 1px solid var(--seg-off);
     list-style: none;
   }
@@ -525,9 +534,7 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
   .legend li {
     display: flex;
     align-items: center;
-    gap: 8px;
-    min-width: 0;
-    padding: 7px 0;
+    gap: 7px;
     transition: opacity 140ms;
   }
 
@@ -545,14 +552,11 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
   }
 
   .name {
-    overflow: hidden;
-    text-overflow: ellipsis;
     opacity: 0.75;
   }
 
   .value {
-    flex: none;
-    margin-left: auto;
+    min-width: 3ch;
     font-variant-numeric: tabular-nums;
   }
 
@@ -561,32 +565,63 @@ const ticks = new Set(days.map((_, i) => i).filter((i) => i === 0 || (i >= 3 && 
   }
 
   .legend li:has(.value:empty) {
-    opacity: 0.4;
+    opacity: 0.45;
   }
 
-  @container (width < 560px) {
-    .legend {
-      grid-template-columns: 1fr 1fr;
-      column-gap: 18px;
-    }
-
-    .legend .label {
-      letter-spacing: 0.04em;
-    }
-
-    .legend li {
-      gap: 7px;
-    }
+  .legend li:has(details[open]) {
+    flex-basis: 100%;
   }
+
+  details {
+    flex: 1;
+  }
+
+  summary {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    width: fit-content;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary::after {
+    width: 5px;
+    height: 5px;
+    margin-left: 2px;
+    content: "";
+    border-right: 1px solid var(--seg);
+    border-bottom: 1px solid var(--seg);
+    opacity: 0.7;
+    rotate: 45deg;
+    translate: 0 -2px;
+    transition: rotate 160ms var(--ease-out), translate 160ms var(--ease-out);
+  }
+
+  details[open] summary::after {
+    rotate: 225deg;
+    translate: 0 1px;
+  }
+
+  .members {
+    margin: 8px 0 0;
+    padding-left: 15px;
+    line-height: 1.7;
+    letter-spacing: 0.04em;
+    white-space: normal;
+    text-transform: none;
+    opacity: 0.55;
+  }
+
 
   @container (width < 420px) {
     .calendar {
       grid-template-columns: repeat(var(--columns), 1fr);
       row-gap: 14px;
-    }
-
-    .week:first-child {
-      grid-column-start: var(--lead);
     }
 
     .month [data-mode="wide"] {
