@@ -12,6 +12,7 @@ const { jp, title, id } = Astro.props;
   <h2>
     <span class="dot jp">{jp}</span>
     <span class="label">{title}</span>
+    <slot name="hint" />
   </h2>
   <slot />
 </section>
@@ -27,6 +28,11 @@ const { jp, title, id } = Astro.props;
     gap: 12px;
     margin: 0 0 20px;
     font-weight: 400;
+  }
+
+  h2 > :global(.hint) {
+    justify-items: end;
+    margin-left: auto;
   }
 
   .jp {

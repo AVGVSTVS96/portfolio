@@ -22,6 +22,10 @@ import Base from "../layouts/Base.astro";
     </section>
 
     <Section jp="活動" title="Activity">
+      <span class="hint label" slot="hint" aria-hidden="true">
+        <span data-hover>Click any day</span>
+        <span data-touch>Tap any day</span>
+      </span>
       <Activity />
     </Section>
 
@@ -56,6 +60,11 @@ import Base from "../layouts/Base.astro";
 
   main > :global(section:not(.hero)) {
     animation-delay: calc((sibling-index() + 4) * 70ms);
+  }
+
+  :global(section:has(.reveal[data-open="true"])) .hint > * {
+    opacity: 0;
+    filter: blur(4px);
   }
 
   .kana {
