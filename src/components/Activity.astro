@@ -124,8 +124,15 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
         event.stopPropagation();
       }
     });
+    let end = true;
+    scroll.addEventListener("scroll", () => {
+      end = scroll.scrollLeft >= scroll.scrollWidth - scroll.clientWidth - 1;
+    }, { passive: true });
     new ResizeObserver(() => {
-      scroll.scrollLeft = scroll.scrollWidth;
+      if (end) {
+        scroll.scrollLeft = scroll.scrollWidth;
+      }
+
       edges();
     }).observe(scroll);
   }
@@ -193,6 +200,9 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
 
   .calendar-scroll {
     overflow-x: auto;
+    padding: 6px;
+    margin: -6px;
+    scroll-padding-inline: 20px;
     scrollbar-width: none;
     mask-image: linear-gradient(to right, transparent, black var(--fade-left, 0px), black calc(100% - var(--fade-right, 0px)), transparent);
   }
@@ -261,9 +271,16 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
     box-shadow: var(--seg-glow);
   }
 
-  :is(.cell, .tick):is(:hover, [data-picked]) {
+  :is(.cell, .tick)[data-picked] {
     outline: 1px solid var(--seg);
     outline-offset: 1px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    :is(.cell, .tick):hover {
+      outline: 1px solid var(--seg);
+      outline-offset: 1px;
+    }
   }
 
   .tracks {

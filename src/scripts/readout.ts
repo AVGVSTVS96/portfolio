@@ -29,7 +29,9 @@ for (const display of document.querySelectorAll<HTMLElement>(
   "[data-readout]"
 )) {
   const slots = display.querySelectorAll<HTMLElement>("[data-show]");
+  const scroll = display.querySelector<HTMLElement>(".calendar-scroll");
   let picked: HTMLElement | undefined;
+  let touch: { x: number; y: number } | undefined;
 
   const render = () => {
     for (const slot of slots) {
@@ -74,6 +76,14 @@ for (const display of document.querySelectorAll<HTMLElement>(
   });
 
   display.addEventListener("pointerover", (event) => {
+    if (
+      (event.pointerType !== "mouse" || touch !== undefined) &&
+      event.target instanceof Node &&
+      scroll?.contains(event.target) === true
+    ) {
+      return;
+    }
+
     const tip = tipAt(event.target);
 
     if (
@@ -89,7 +99,19 @@ for (const display of document.querySelectorAll<HTMLElement>(
   });
 
   display.addEventListener("pointermove", (event) => {
-    if (event.pointerType === "mouse") {
+    if (
+      event.pointerType === "mouse" &&
+      touch !== undefined &&
+      (event.clientX !== touch.x || event.clientY !== touch.y)
+    ) {
+      touch = undefined;
+      show(tipAt(event.target));
+    }
+
+    if (
+      event.pointerType === "mouse" ||
+      (event.target instanceof Node && scroll?.contains(event.target) === true)
+    ) {
       return;
     }
 
@@ -102,6 +124,22 @@ for (const display of document.querySelectorAll<HTMLElement>(
     }
   });
 
+  scroll?.addEventListener("pointerdown", (event) => {
+    touch =
+      event.pointerType === "mouse"
+        ? undefined
+        : { x: event.clientX, y: event.clientY };
+
+    if (touch !== undefined) {
+      show();
+    }
+  });
+  scroll?.addEventListener("click", (event) => {
+    const tip = tipAt(event.target);
+    show(tip);
+    tip?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
+
   document.addEventListener("pointerdown", (event) => {
     if (event.target instanceof Node && !display.contains(event.target)) {
       show();
@@ -109,7 +147,7 @@ for (const display of document.querySelectorAll<HTMLElement>(
   });
 
   display.addEventListener("pointerleave", (event) => {
-    if (event.pointerType === "mouse") {
+    if (event.pointerType === "mouse" && touch === undefined) {
       show();
     }
   });
