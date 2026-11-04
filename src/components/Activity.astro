@@ -12,7 +12,6 @@ const plural = (count: number, word: string) => (count === 1 ? word : `${word}s`
 
 const total = format.format(contributions.total.lastYear);
 const padding = 7 - (weeks[0]?.length ?? 7);
-const half = Math.ceil(weeks.length / 2);
 
 const date = (week: number, at: number) => new Date(weeks[week]?.at(at)?.date ?? "");
 const startsMonth = (week: number) => date(week, -1).getUTCDate() <= 7;
@@ -20,16 +19,11 @@ const startsMonth = (week: number) => date(week, -1).getUTCDate() <= 7;
 const labelled = (week: number, first: number, end: number) =>
   week <= end - 4 && (startsMonth(week) || (week === first && !startsMonth(week + 1) && !startsMonth(week + 2)));
 
-const columns = weeks.map((week, index) => {
-  const first = index < half ? 0 : half;
-
-  return {
-    week,
-    label: month.format(date(index, startsMonth(index) ? -1 : 0)),
-    wide: labelled(index, 0, weeks.length),
-    narrow: labelled(index, first, first === 0 ? half : weeks.length),
-  };
-});
+const columns = weeks.map((week, index) => ({
+  week,
+  label: month.format(date(index, startsMonth(index) ? -1 : 0)),
+  wide: labelled(index, 0, weeks.length),
+}));
 
 const days = activity.days.map((entry) => new Date(entry));
 const daily: Record<string, number[]> = activity.daily;
@@ -54,27 +48,29 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
       </p>
       <span class="when" data-show="date" data-idle="Last 12 months">Last 12 months</span>
     </div>
-    <div class="calendar" style={`--weeks: ${weeks.length}; --half: ${half}`}>
-      {
-        columns.map(({ week, label, wide, narrow }, index) => (
-          <div class="week">
-            <span class="month" data-wide={wide ? "" : undefined} data-narrow={narrow ? "" : undefined}>
-              {wide || narrow ? label : ""}
-            </span>
-            {index === 0 && Array.from({ length: padding }, () => <span />)}
-            {week.map((entry) => (
-              <span
-                class="cell"
-                data-level={entry.level}
-                data-tip
-                data-count={format.format(entry.count)}
-                data-unit={plural(entry.count, "contribution")}
-                data-date={long.format(new Date(entry.date))}
-              />
-            ))}
-          </div>
-        ))
-      }
+    <div class="calendar-scroll" tabindex="0" role="region" aria-label="Contribution calendar, scroll for earlier months">
+      <div class="calendar" style={`--weeks: ${weeks.length}`}>
+        {
+          columns.map(({ week, label, wide }, index) => (
+            <div class="week">
+              <span class="month" data-wide={wide ? "" : undefined}>
+                {wide ? label : ""}
+              </span>
+              {index === 0 && Array.from({ length: padding }, () => <span />)}
+              {week.map((entry) => (
+                <span
+                  class="cell"
+                  data-level={entry.level}
+                  data-tip
+                  data-count={format.format(entry.count)}
+                  data-unit={plural(entry.count, "contribution")}
+                  data-date={long.format(new Date(entry.date))}
+                />
+              ))}
+            </div>
+          ))
+        }
+      </div>
     </div>
   </div>
 
@@ -114,6 +110,26 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
     </div>
   </div>
 </div>
+
+<script>
+  for (const scroll of document.querySelectorAll<HTMLElement>(".calendar-scroll")) {
+    const edges = () => {
+      scroll.style.setProperty("--fade-left", scroll.scrollLeft > 1 ? "14px" : "0px");
+      scroll.style.setProperty("--fade-right", scroll.scrollLeft < scroll.scrollWidth - scroll.clientWidth - 1 ? "14px" : "0px");
+    };
+
+    scroll.addEventListener("scroll", edges, { passive: true });
+    scroll.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.stopPropagation();
+      }
+    });
+    new ResizeObserver(() => {
+      scroll.scrollLeft = scroll.scrollWidth;
+      edges();
+    }).observe(scroll);
+  }
+</script>
 
 <style>
   .activity {
@@ -175,13 +191,22 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
     text-align: right;
   }
 
+  .calendar-scroll {
+    overflow-x: auto;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, transparent, black var(--fade-left, 0px), black calc(100% - var(--fade-right, 0px)), transparent);
+  }
+
+  .calendar-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
   .calendar {
     display: grid;
     --gap: clamp(2px, 0.5cqi, 3px);
 
     grid-template-columns: repeat(var(--weeks), 1fr);
     gap: var(--gap);
-    touch-action: pan-y;
   }
 
   .week {
@@ -294,16 +319,7 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
 
   @container (width < 420px) {
     .calendar {
-      grid-template-columns: repeat(var(--half), 1fr);
-      row-gap: 12px;
-    }
-
-    .month[data-narrow] {
-      visibility: visible;
-    }
-
-    .month:not([data-narrow]) {
-      visibility: hidden;
+      width: 200%;
     }
 
     .count {
