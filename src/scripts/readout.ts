@@ -3,7 +3,7 @@ const tipAt = (target: EventTarget | null) =>
     ? (target.closest<HTMLElement>("[data-tip]") ?? undefined)
     : undefined;
 
-const write = (slot: HTMLElement, text: string) => {
+export const write = (slot: HTMLElement, text: string) => {
   if (slot.dataset.group === undefined) {
     slot.textContent = text;
 
@@ -34,6 +34,10 @@ for (const display of document.querySelectorAll<HTMLElement>(
   let touch: { x: number; y: number } | undefined;
 
   const render = () => {
+    if (picked && !display.contains(picked)) {
+      picked = undefined;
+    }
+
     for (const slot of slots) {
       const key = slot.dataset.show ?? "";
       write(

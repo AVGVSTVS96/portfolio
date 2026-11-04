@@ -4,7 +4,7 @@ import { projects } from "../src/data/projects";
 
 const USER = "AVGVSTVS96";
 const MONTHS = 12;
-const DAYS = 30;
+const WINDOW = 30;
 
 const gh = (args: string[], jq: string) => {
   const proc = Bun.spawnSync(["gh", "api", ...args, "--paginate", "--jq", jq]);
@@ -87,7 +87,15 @@ const year = z
   })
   .parse(JSON.parse(calendar));
 
-const days = year.days.slice(-DAYS).map(({ date }) => date);
+const first = new Date(year.days[0]?.date ?? now);
+
+first.setUTCDate(first.getUTCDate() - WINDOW + 1);
+
+const days = Array.from(
+  { length: Math.round((now.getTime() - first.getTime()) / 86_400_000) + 1 },
+  (_, i) =>
+    new Date(first.getTime() + i * 86_400_000).toISOString().slice(0, 10)
+);
 
 const zone = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Los_Angeles",
@@ -114,14 +122,24 @@ const windows = days.map(
       )} repositoryContributions(first: 100) { nodes { repository { nameWithOwner } } } }`
 );
 
-const lines = gh(
-  [
-    "graphql",
-    "-f",
-    `query=query { user(login: "${USER}") { ${windows.join(" ")} } }`,
-  ],
-  `.data.user | to_entries[] | (.key | ltrimstr("d")) as $day | .value | ("\\($day) private \\(.restrictedContributionsCount)", ((.commitContributionsByRepository + .pullRequestContributionsByRepository + .pullRequestReviewContributionsByRepository + .issueContributionsByRepository)[] | "\\($day) \\(.repository.nameWithOwner) \\(.contributions.totalCount)"), (.repositoryContributions.nodes[] | "\\($day) \\(.repository.nameWithOwner) 1"))`
-);
+const lines: string[] = [];
+
+for (let start = 0; start < windows.length; start += WINDOW) {
+  console.log(
+    `daily contributions: ${start + 1}–${Math.min(start + WINDOW, days.length)} of ${days.length}`
+  );
+
+  const batch = gh(
+    [
+      "graphql",
+      "-f",
+      `query=query { user(login: "${USER}") { ${windows.slice(start, start + WINDOW).join(" ")} } }`,
+    ],
+    `.data.user | to_entries[] | (.key | ltrimstr("d")) as $day | .value | ("\\($day) private \\(.restrictedContributionsCount)", ((.commitContributionsByRepository + .pullRequestContributionsByRepository + .pullRequestReviewContributionsByRepository + .issueContributionsByRepository)[] | "\\($day) \\(.repository.nameWithOwner) \\(.contributions.totalCount)"), (.repositoryContributions.nodes[] | "\\($day) \\(.repository.nameWithOwner) 1"))`
+  );
+
+  lines.push(...batch);
+}
 
 const daily: Record<string, number[]> = {};
 
@@ -156,7 +174,7 @@ const ranked = Object.fromEntries(
 );
 
 console.log(
-  `last ${DAYS} days: ${sum(Object.values(daily).flat())} contributions, ${sum(hidden)} private`
+  `last ${days.length} days: ${sum(Object.values(daily).flat())} contributions, ${sum(hidden)} private`
 );
 
 await Bun.write(

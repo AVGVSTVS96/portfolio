@@ -5,7 +5,6 @@ import { contributions, weeks } from "../lib/data";
 
 const format = new Intl.NumberFormat("en-US");
 const month = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
-const short = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const long = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 const plural = (count: number, word: string) => (count === 1 ? word : `${word}s`);
@@ -25,22 +24,16 @@ const columns = weeks.map((week, index) => ({
   wide: labelled(index, 0, weeks.length),
 }));
 
-const days = activity.days.map((entry) => new Date(entry));
 const daily: Record<string, number[]> = activity.daily;
 
-const tracks = Object.keys(activity.repos)
-  .map((id) => ({ id, counts: daily[id] ?? [] }))
-  .map(({ id, counts }) => ({ id, counts, sum: counts.reduce((a, b) => a + b, 0) }))
-  .filter(({ sum }) => sum > 0)
-  .toSorted((a, b) => b.sum - a.sum);
-
-const commits = format.format(tracks.reduce((all, { sum }) => all + sum, 0));
-const peak = Math.max(...tracks.flatMap(({ counts }) => counts), 1);
-const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count / peak));
+const history = {
+  days: activity.days,
+  daily: Object.fromEntries(Object.keys(activity.repos).map((id) => [id, daily[id] ?? activity.days.map(() => 0)])),
+};
 ---
 
 <div class="activity">
-  <div class="screen" data-readout data-boot>
+  <div class="screen" data-calendar data-boot>
     <div class="readout">
       <p>
         <span class="count dot lit" data-show="count" data-group data-idle={total}><Grouped text={total} /></span>
@@ -58,8 +51,14 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
               </span>
               {index === 0 && Array.from({ length: padding }, () => <span />)}
               {week.map((entry) => (
-                <span
+                <button
+                  type="button"
                   class="cell"
+                  aria-label={`${long.format(new Date(entry.date))}: ${format.format(entry.count)} ${plural(entry.count, "contribution")}. Show preceding 30 days`}
+                  aria-pressed="false"
+                  aria-controls="activity-projects"
+                  tabindex={entry.date === weeks.at(-1)?.at(-1)?.date ? 0 : -1}
+                  data-day={entry.date}
                   data-level={entry.level}
                   data-tip
                   data-count={format.format(entry.count)}
@@ -74,44 +73,201 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
     </div>
   </div>
 
-  <div class="screen" data-readout data-boot>
-    <div class="readout">
-      <p>
-        <span class="count dot lit" data-show="count" data-group data-idle={commits}><Grouped text={commits} /></span>
-        <span class="unit" data-show="unit" data-idle="commits">commits</span>
-      </p>
-      <span class="when" data-show="date" data-idle="Last 30 days">Last 30 days</span>
-    </div>
-    <div class="tracks" style={`--days: ${days.length}`}>
-      {
-        tracks.map(({ id, counts, sum }) => (
-          <div class="track">
-            <span class="name">{id}</span>
-            {counts.map((count, i) => (
-              <span
-                class="tick"
-                style={`--glow: ${glow(count)}`}
-                data-bright={glow(count) >= 0.75 ? "" : undefined}
-                data-tip
-                data-count={format.format(count)}
-                data-unit={plural(count, "commit")}
-                data-date={`${id} · ${short.format(days[i])}`}
-              />
-            ))}
-            <span class="sum">{format.format(sum)}</span>
-          </div>
-        ))
-      }
-      <div class="track axis">
-        {days.map((entry, i) =>
-          (days.length - 1 - i) % 7 === 0 ? <span style={`grid-column: ${i + 2}`}>{short.format(entry)}</span> : null,
-        )}
+  <div class="reveal" inert aria-hidden="true">
+    <div class="reveal-clip">
+      <div class="screen" id="activity-projects" data-readout data-on>
+        <div class="detail-heading">
+          <p class="range" aria-live="polite"></p>
+          <button class="close" type="button" aria-label="Close project activity">Close <span aria-hidden="true">×</span></button>
+        </div>
+        <div class="readout">
+          <p>
+            <span class="count dot lit" data-show="count" data-group></span>
+            <span class="unit" data-show="unit" data-idle="contributions">contributions</span>
+          </p>
+          <span class="when" data-show="date" data-idle="30 days">30 days</span>
+        </div>
+        <div class="tracks" style="--days: 30"></div>
+        <p class="empty" hidden>No activity in these projects.</p>
       </div>
     </div>
   </div>
+  <script type="application/json" id="activity-history" set:html={JSON.stringify(history).replaceAll("<", "\\u003c")} />
+  <template id="activity-track">
+    <div class="track"><span class="name"></span><span class="sum"></span></div>
+  </template>
 </div>
 
 <script>
+  import { write } from "../scripts/readout";
+
+  const history = document.querySelector("#activity-history");
+  const calendar = document.querySelector<HTMLElement>("[data-calendar]");
+  const panel = document.querySelector<HTMLElement>("#activity-projects");
+  const reveal = document.querySelector<HTMLElement>(".reveal");
+  const template = document.querySelector<HTMLTemplateElement>("#activity-track");
+
+  if (history && calendar && panel && reveal && template) {
+    const { days, daily }: { days: string[]; daily: Record<string, number[]> } = JSON.parse(history.textContent ?? "{}");
+    const format = new Intl.NumberFormat("en-US");
+    const short = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    const long = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+    const cells = [...calendar.querySelectorAll<HTMLButtonElement>("[data-day]")];
+    const slots = calendar.querySelectorAll<HTMLElement>("[data-show]");
+    let selected: HTMLButtonElement | undefined;
+
+    const read = (cell = selected) => {
+      for (const slot of slots) {
+        write(slot, cell?.dataset[slot.dataset.show ?? ""] ?? slot.dataset.idle ?? "");
+      }
+    };
+
+    const close = () => {
+      selected?.setAttribute("aria-pressed", "false");
+      selected = undefined;
+      reveal.dataset.open = "false";
+      reveal.inert = true;
+      reveal.setAttribute("aria-hidden", "true");
+      read();
+    };
+
+    const pick = (cell: HTMLButtonElement) => {
+      if (selected === cell) {
+        close();
+
+        return;
+      }
+
+      selected?.setAttribute("aria-pressed", "false");
+      selected = cell;
+      cell.setAttribute("aria-pressed", "true");
+      read();
+      const end = days.indexOf(cell.dataset.day ?? "");
+      const start = end - 29;
+      const window = days.slice(start, end + 1);
+
+      const tracks = Object.entries(daily)
+        .map(([id, counts]) => {
+          const values = counts.slice(start, end + 1);
+
+          return { id, counts: values, sum: values.reduce((a, b) => a + b, 0) };
+        })
+        .filter(({ sum }) => sum > 0)
+        .toSorted((a, b) => b.sum - a.sum);
+
+      const total = format.format(tracks.reduce((sum, track) => sum + track.sum, 0));
+      const peak = Math.max(...tracks.flatMap(({ counts }) => counts), 1);
+      const grid = panel.querySelector<HTMLElement>(".tracks");
+
+      const rows = tracks.map(({ id, counts, sum }) => {
+        const fragment = template.content.cloneNode(true);
+
+        if (!(fragment instanceof DocumentFragment)) {
+          throw new Error("Missing activity row");
+        }
+
+        const row = fragment.querySelector<HTMLElement>(".track");
+        const name = fragment.querySelector<HTMLElement>(".name");
+        const amount = fragment.querySelector<HTMLElement>(".sum");
+
+        if (name && amount && row) {
+          name.textContent = id;
+          amount.textContent = format.format(sum);
+
+          for (const [i, count] of counts.entries()) {
+            const tick = document.createElement("span");
+            const glow = count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count / peak);
+            tick.className = "tick";
+            tick.style.setProperty("--glow", String(glow));
+            tick.toggleAttribute("data-bright", glow >= 0.75);
+            tick.dataset.tip = "";
+            tick.dataset.count = format.format(count);
+            tick.dataset.unit = count === 1 ? "contribution" : "contributions";
+            tick.dataset.date = `${id} · ${short.format(new Date(window[i] ?? ""))}`;
+            amount.before(tick);
+          }
+        }
+
+        return fragment;
+      });
+
+      const axis = document.createElement("div");
+      axis.className = "track axis";
+
+      for (const [i, date] of window.entries()) {
+        if ((29 - i) % 7 === 0) {
+          const label = document.createElement("span");
+          label.style.gridColumn = String(i + 2);
+          label.textContent = short.format(new Date(date));
+          axis.append(label);
+        }
+      }
+
+      grid?.replaceChildren(...rows, axis);
+
+      for (const slot of panel.querySelectorAll<HTMLElement>('[data-show="count"]')) {
+        slot.dataset.idle = total;
+      }
+
+      panel.dispatchEvent(new Event("refresh"));
+      const range = panel.querySelector<HTMLElement>(".range");
+
+      if (range) {
+        range.textContent = `${long.format(new Date(window[0] ?? ""))} – ${long.format(new Date(window.at(-1) ?? ""))}`;
+      }
+
+      const empty = panel.querySelector<HTMLElement>(".empty");
+
+      if (empty) {
+        empty.hidden = tracks.length > 0;
+      }
+
+      reveal.inert = false;
+      reveal.setAttribute("aria-hidden", "false");
+      reveal.dataset.open = "true";
+    };
+
+    for (const cell of cells) {
+      cell.addEventListener("click", () => pick(cell));
+      cell.addEventListener("pointerenter", (event) => {
+        if (event.pointerType === "mouse") {
+          read(cell);
+        }
+      });
+      cell.addEventListener("focus", () => {
+        for (const other of cells) {
+          other.tabIndex = other === cell ? 0 : -1;
+        }
+
+        read(cell);
+      });
+      cell.addEventListener("keydown", (event) => {
+        const step = { ArrowLeft: -7, ArrowRight: 7, ArrowUp: -1, ArrowDown: 1 }[event.key];
+        const target = { Home: 0, End: cells.length - 1 }[event.key];
+
+        if (step !== undefined || target !== undefined) {
+          event.preventDefault();
+          const next = cells[Math.min(Math.max(target ?? cells.indexOf(cell) + (step ?? 0), 0), cells.length - 1)];
+          next?.focus({ preventScroll: true });
+          next?.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }
+      });
+    }
+
+    calendar.addEventListener("pointerleave", () => read());
+    calendar.addEventListener("focusout", () => read());
+    document.querySelector(".activity")?.addEventListener("keydown", (event) => {
+      if (event instanceof KeyboardEvent && event.key === "Escape") {
+        selected?.focus({ preventScroll: true });
+        close();
+      }
+    });
+    panel.querySelector(".close")?.addEventListener("click", () => {
+      selected?.focus({ preventScroll: true });
+      close();
+    });
+  }
+
   for (const scroll of document.querySelectorAll<HTMLElement>(".calendar-scroll")) {
     const edges = () => {
       scroll.style.setProperty("--fade-left", scroll.scrollLeft > 1 ? "14px" : "0px");
@@ -138,259 +294,329 @@ const glow = (count: number) => (count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count
   }
 </script>
 
-<style>
+<style is:global>
   .activity {
     display: grid;
-    gap: 28px;
-  }
 
-  .screen {
-    padding: 18px 18px 16px;
-    container-type: inline-size;
-  }
-
-  .readout {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 18px;
-  }
-
-  .readout p {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin: 0;
-  }
-
-  .count {
-    font-size: 34px;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .count :global(.comma) {
-    margin-inline: -0.04em -0.26em;
-  }
-
-  .unit,
-  .when,
-  .month,
-  .track > span {
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    font-weight: 500;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    color: var(--seg);
-  }
-
-  .unit,
-  .when {
-    opacity: 0.6;
-  }
-
-  .when {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-align: right;
-  }
-
-  .calendar-scroll {
-    overflow-x: auto;
-    padding: 6px;
-    margin: -6px;
-    scroll-padding-inline: 20px;
-    scrollbar-width: none;
-    mask-image: linear-gradient(to right, transparent, black var(--fade-left, 0px), black calc(100% - var(--fade-right, 0px)), transparent);
-  }
-
-  .calendar-scroll::-webkit-scrollbar {
-    display: none;
-  }
-
-  .calendar {
-    display: grid;
-    --gap: clamp(2px, 0.5cqi, 3px);
-
-    grid-template-columns: repeat(var(--weeks), 1fr);
-    gap: var(--gap);
-  }
-
-  .week {
-    display: grid;
-    gap: var(--gap);
-    align-content: start;
-  }
-
-  .month {
-    height: 14px;
-    width: 0;
-    overflow: visible;
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    opacity: 0.45;
-  }
-
-  .month:not([data-wide]) {
-    visibility: hidden;
-  }
-
-  .week > span:not(.month) {
-    aspect-ratio: 1;
-  }
-
-  .cell,
-  .tick {
-    background: color-mix(in oklab, var(--seg) calc(var(--glow, 0) * 100%), var(--seg-off));
-  }
-
-  .cell {
-    border-radius: 2px;
-  }
-
-  .cell[data-level="1"] {
-    --glow: 0.3;
-  }
-
-  .cell[data-level="2"] {
-    --glow: 0.52;
-  }
-
-  .cell[data-level="3"] {
-    --glow: 0.75;
-  }
-
-  .cell[data-level="4"] {
-    --glow: 1;
-  }
-
-  :is(.cell[data-level="4"], .tick[data-bright]) {
-    box-shadow: var(--seg-glow);
-  }
-
-  :is(.cell, .tick)[data-picked] {
-    outline: 1px solid var(--seg);
-    outline-offset: 1px;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    :is(.cell, .tick):hover {
-      outline: 1px solid var(--seg);
-      outline-offset: 1px;
-    }
-  }
-
-  .tracks {
-    display: grid;
-    gap: 6px;
-    touch-action: pan-y;
-  }
-
-  .track {
-    display: grid;
-    grid-template-columns: min(136px, 26%) repeat(var(--days), 1fr) 36px;
-    align-items: center;
-    gap: clamp(1.5px, 0.4cqi, 2px);
-  }
-
-  .track > span:not(.tick) {
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    opacity: 0.6;
-    transition: opacity 120ms;
-  }
-
-  .track:has([data-picked]) > span {
-    opacity: 1;
-  }
-
-  .name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding-right: 10px;
-  }
-
-  .sum {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .tick {
-    height: 10px;
-    border-radius: 1.5px;
-  }
-
-  .axis {
-    margin-top: 6px;
-  }
-
-  .axis > span {
-    grid-row: 1;
-    width: 0;
-    overflow: visible;
-    opacity: 0.45;
-  }
-
-  @container (width < 420px) {
-    .calendar {
-      width: 200%;
+    .reveal {
+      display: grid;
+      grid-template-rows: 0fr;
+      visibility: hidden;
+      opacity: 0;
+      transition: grid-template-rows 220ms var(--ease-out), opacity 160ms, visibility 220ms;
     }
 
-    .count {
-      font-size: 30px;
+    .reveal[data-open="true"] {
+      grid-template-rows: 1fr;
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .reveal-clip {
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    #activity-projects {
+      margin-top: 28px;
+    }
+
+    .detail-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .range, .close, .empty {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--seg);
+    }
+
+    .range {
+      margin: 0;
+      opacity: 0.6;
+    }
+
+    .close {
+      background: none;
+      border: 0;
+      padding: 8px 0 8px 10px;
+      cursor: pointer;
+      opacity: 0.6;
+    }
+
+    .close:hover, .close:focus-visible {
+      opacity: 1;
+    }
+
+    .close span {
+      margin-left: 4px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal {
+        transition: none;
+      }
+    }
+
+    .screen {
+      padding: 18px 18px 16px;
+      container-type: inline-size;
     }
 
     .readout {
-      gap: 12px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
     }
 
     .readout p {
-      gap: 8px;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin: 0;
+    }
+
+    .count {
+      font-size: 34px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .count .comma {
+      margin-inline: -0.04em -0.26em;
+    }
+
+    .unit,
+    .when,
+    .month,
+    .track > span {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      color: var(--seg);
     }
 
     .unit,
     .when {
-      font-size: 9.5px;
-      letter-spacing: 0.06em;
+      opacity: 0.6;
     }
 
-    .track {
-      grid-template-columns: 31% repeat(var(--days), 1fr) 26px;
+    .when {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: right;
     }
 
-    .track > span:not(.tick) {
-      letter-spacing: 0.04em;
+    .calendar-scroll {
+      overflow-x: auto;
+      padding: 6px;
+      margin: -6px;
+      scroll-padding-inline: 20px;
+      scrollbar-width: none;
+      mask-image: linear-gradient(to right, transparent, black var(--fade-left, 0px), black calc(100% - var(--fade-right, 0px)), transparent);
     }
 
-    .name {
-      padding-right: 6px;
-    }
-
-    .axis > span:nth-last-child(even) {
+    .calendar-scroll::-webkit-scrollbar {
       display: none;
     }
-  }
 
-  @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
-    .readout,
-    .week,
-    .track {
-      animation: fade 420ms var(--ease-out) backwards paused;
+    .calendar {
+      display: grid;
+      --gap: clamp(2px, 0.5cqi, 3px);
+
+      grid-template-columns: repeat(var(--weeks), 1fr);
+      gap: var(--gap);
     }
 
     .week {
-      animation-delay: calc((sibling-count() - sibling-index()) * 8ms);
+      display: grid;
+      gap: var(--gap);
+      align-content: start;
+    }
+
+    .month {
+      height: 14px;
+      width: 0;
+      overflow: visible;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      opacity: 0.45;
+    }
+
+    .month:not([data-wide]) {
+      visibility: hidden;
+    }
+
+    .week > :not(.month) {
+      aspect-ratio: 1;
+    }
+
+    .cell,
+    .tick {
+      background: color-mix(in oklab, var(--seg) calc(var(--glow, 0) * 100%), var(--seg-off));
+    }
+
+    .cell {
+      appearance: none;
+      border: 0;
+      padding: 0;
+      width: 100%;
+      min-width: 0;
+      cursor: pointer;
+      border-radius: 2px;
+    }
+
+    .cell[data-level="1"] {
+      --glow: 0.3;
+    }
+
+    .cell[data-level="2"] {
+      --glow: 0.52;
+    }
+
+    .cell[data-level="3"] {
+      --glow: 0.75;
+    }
+
+    .cell[data-level="4"] {
+      --glow: 1;
+    }
+
+    :is(.cell[data-level="4"], .tick[data-bright]) {
+      box-shadow: var(--seg-glow);
+    }
+
+    :is(.cell, .tick)[data-picked],
+    .cell[aria-pressed="true"] {
+      outline: 1px solid var(--seg);
+      outline-offset: 1px;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      :is(.cell, .tick):hover {
+        outline: 1px solid var(--seg);
+        outline-offset: 1px;
+      }
+    }
+
+    .tracks {
+      display: grid;
+      gap: 6px;
+      touch-action: pan-y;
     }
 
     .track {
-      animation-delay: calc(sibling-index() * 24ms);
+      display: grid;
+      grid-template-columns: min(136px, 26%) repeat(var(--days), 1fr) 36px;
+      align-items: center;
+      gap: clamp(1.5px, 0.4cqi, 2px);
     }
 
-    .screen[data-on] :is(.readout, .week, .track) {
-      animation-play-state: running;
+    .track > span:not(.tick) {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      opacity: 0.6;
+      transition: opacity 120ms;
+    }
+
+    .track:has([data-picked]) > span {
+      opacity: 1;
+    }
+
+    .name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 10px;
+    }
+
+    .sum {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tick {
+      height: 10px;
+      border-radius: 1.5px;
+    }
+
+    .axis {
+      margin-top: 6px;
+    }
+
+    .axis > span {
+      grid-row: 1;
+      width: 0;
+      overflow: visible;
+      opacity: 0.45;
+    }
+
+    @container (width < 420px) {
+      .calendar {
+        width: 200%;
+      }
+
+      .count {
+        font-size: 30px;
+      }
+
+      .readout {
+        gap: 12px;
+      }
+
+      .readout p {
+        gap: 8px;
+      }
+
+      .unit,
+      .when {
+        font-size: 9.5px;
+        letter-spacing: 0.06em;
+      }
+
+      .track {
+        grid-template-columns: 31% repeat(var(--days), 1fr) 26px;
+      }
+
+      .track > span:not(.tick) {
+        letter-spacing: 0.04em;
+      }
+
+      .name {
+        padding-right: 6px;
+      }
+
+      .axis > span:nth-last-child(even) {
+        display: none;
+      }
+    }
+
+    @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+      .readout,
+      .week,
+      .track {
+        animation: fade 420ms var(--ease-out) backwards paused;
+      }
+
+      .week {
+        animation-delay: calc((sibling-count() - sibling-index()) * 8ms);
+      }
+
+      .track {
+        animation-delay: calc(sibling-index() * 24ms);
+      }
+
+      .screen[data-on] :is(.readout, .week, .track) {
+        animation-play-state: running;
+      }
     }
   }
 </style>
