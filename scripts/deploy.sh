@@ -14,8 +14,10 @@ bun scripts/sync.ts
 
 if ! git diff --quiet src/data/activity.json; then
   git commit --quiet -m "chore(data): sync activity" src/data/activity.json
-  git -C "$repo" merge --quiet --ff-only "$(git rev-parse HEAD)" || echo "main moved on; this deploy's data is $(git rev-parse --short HEAD)"
+  git -C "$repo" merge --quiet --ff-only "$(git rev-parse HEAD)"
 fi
+
+git -C "$repo" push origin main
 
 bun run build
 vercel deploy --prod --yes

@@ -17,7 +17,7 @@ const japanese = globSync("src/**/*.astro").flatMap(
 );
 
 export default defineConfig({
-  site: `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "portfolio-bay-eta-38.vercel.app"}`,
+  site: `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "bassim.im"}`,
   trailingSlash: "never",
   integrations: [sitemap()],
   fonts: [
