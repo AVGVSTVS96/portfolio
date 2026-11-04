@@ -106,6 +106,33 @@ a {
   color: var(--ink-3);
 }
 
+.hint {
+  display: inline-grid;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.hint > * {
+  grid-area: 1 / 1;
+  transition:
+    opacity 240ms var(--ease),
+    filter 240ms var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hint > [data-touch] {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .hint > [data-hover] {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
 .dot {
   font-family: var(--font-dot);
   letter-spacing: 0.04em;

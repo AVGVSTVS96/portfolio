@@ -101,6 +101,12 @@ const links = [
       ))
     }
   </ul>
+
+  <span class="hint label" aria-hidden="true">
+    <span data-hover>← Hover to peek</span>
+    <span data-touch>← Tap to peek</span>
+    <span data-swipe>← Swipe →</span>
+  </span>
 </nav>
 
 <script>
@@ -200,7 +206,23 @@ const links = [
   .links {
     position: relative;
     z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     width: max-content;
+  }
+
+  .hint > [data-swipe],
+  .links:has(.card[data-open]) .hint > :not([data-swipe]) {
+    opacity: 0;
+    filter: blur(4px);
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    .links:has(.card[data-open]) .hint > [data-swipe] {
+      opacity: 1;
+      filter: none;
+    }
   }
 
   ul {
