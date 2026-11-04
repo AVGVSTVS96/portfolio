@@ -78,11 +78,11 @@ export const projects: Project[] = [
     site: "https://retake-seven.vercel.app",
   },
   {
-    id: "hex-keyboard",
+    id: "iikb",
     repo: "AVGVSTVS96/iikb",
     blurb:
       "An iPhone keyboard that feels like Apple's and learns where you tap.",
-    site: "https://hex-keyboard.vercel.app",
+    site: "https://iikb.vercel.app",
   },
   {
     id: "brand-it",
