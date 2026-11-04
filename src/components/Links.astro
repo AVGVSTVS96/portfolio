@@ -13,6 +13,8 @@ const recent = weeks.slice(-30);
 const format = new Intl.NumberFormat("en-US");
 const day = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
+const ARROW = "M9 4H1.5M4 1 1 4l3 3";
+
 const links = [
   { key: "github", label: "GitHub", href: "https://github.com/AVGVSTVS96", path: siGithub.path },
   { key: "x", label: "X", href: "https://x.com/AVGVSTVS96", path: siX.path },
@@ -86,6 +88,8 @@ const links = [
         }
       </div>
     </div>
+
+    <span class="touch"></span>
   </div>
 
   <ul>
@@ -103,9 +107,9 @@ const links = [
   </ul>
 
   <span class="hint label" aria-hidden="true">
-    <span data-hover>← Hover to peek</span>
-    <span data-touch>← Tap to peek</span>
-    <span data-swipe>← Swipe →</span>
+    <span data-hover><svg viewBox="0 0 10 8" width="10" height="8"><path d={ARROW} /></svg>Hover to peek</span>
+    <span data-touch><svg viewBox="0 0 10 8" width="10" height="8"><path d={ARROW} /></svg>Tap to peek</span>
+    <span data-swipe>Swipe</span>
   </span>
 </nav>
 
@@ -114,7 +118,27 @@ const links = [
   const card = nav?.querySelector<HTMLElement>(".card");
 
   if (nav && card) {
+    const links = [...nav.querySelectorAll<HTMLElement>("[data-card]")];
     let closing = 0;
+    let demo = 0;
+    let demoed = localStorage.getItem("swiped") !== null;
+
+    const stopDemo = () => {
+      clearTimeout(demo);
+      delete card.dataset.demo;
+    };
+
+    const showDemo = (link: HTMLElement) => {
+      if (demoed) {
+        return;
+      }
+
+      demoed = true;
+      demo = window.setTimeout(() => {
+        card.style.setProperty("--dir", link === links.at(-1) ? "-1" : "1");
+        card.dataset.demo = "";
+      }, 700);
+    };
 
     const open = (link: HTMLElement) => {
       clearTimeout(closing);
@@ -159,6 +183,7 @@ const links = [
     const close = () => {
       clearTimeout(closing);
       closing = window.setTimeout(() => {
+        stopDemo();
         delete card.dataset.open;
 
         for (const link of nav.querySelectorAll<HTMLElement>("[data-current]")) {
@@ -174,6 +199,7 @@ const links = [
         if (touch && !Object.hasOwn(link.dataset, "current")) {
           event.preventDefault();
           open(link);
+          showDemo(link);
         }
       });
       link.addEventListener("pointerenter", (event) => event.pointerType === "mouse" && open(link));
@@ -182,19 +208,28 @@ const links = [
     }
 
     document.addEventListener("pointerdown", (event) => event.target instanceof Node && !nav.contains(event.target) && close());
-    const links = [...nav.querySelectorAll<HTMLElement>("[data-card]")];
     let start = 0;
 
-    card.addEventListener("touchstart", (event) => (start = event.touches[0]?.clientX ?? 0), { passive: true });
+    card.addEventListener(
+      "touchstart",
+      (event) => {
+        stopDemo();
+        start = event.touches[0]?.clientX ?? 0;
+      },
+      { passive: true },
+    );
     card.addEventListener("touchend", (event) => {
       const distance = (event.changedTouches[0]?.clientX ?? start) - start;
       const index = links.findIndex((link) => Object.hasOwn(link.dataset, "current"));
       const next = links[index - Math.sign(distance)];
 
       if (Math.abs(distance) > 40 && index !== -1 && next) {
+        localStorage.setItem("swiped", "");
         open(next);
       }
     });
+
+    card.querySelector(".touch")?.addEventListener("animationend", stopDemo);
 
     card.addEventListener("pointerenter", () => clearTimeout(closing));
     nav.addEventListener("pointerleave", (event) => event.pointerType === "mouse" && close());
@@ -204,6 +239,8 @@ const links = [
 
 <style>
   .links {
+    --stroke: 1400ms;
+
     position: relative;
     z-index: 1;
     display: flex;
@@ -218,10 +255,80 @@ const links = [
     filter: blur(4px);
   }
 
-  @media (hover: none), (pointer: coarse) {
-    .links:has(.card[data-open]) .hint > [data-swipe] {
+  .hint svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .links:has(.card[data-demo]) .hint > [data-swipe] {
+    animation: swipe-label calc(2 * var(--stroke)) both;
+  }
+
+  .touch {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 26px;
+    height: 26px;
+    margin: -13px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--ink) 22%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 30%, transparent);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .card[data-demo] .touch {
+    animation: swipe var(--stroke) 2;
+  }
+
+  @keyframes swipe {
+    0% {
+      opacity: 0;
+      scale: 1.3;
+      translate: calc(var(--dir) * var(--travel)) 0;
+    }
+
+    14%,
+    22% {
+      opacity: 1;
+      scale: 1;
+      translate: calc(var(--dir) * var(--travel)) 0;
+      animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+    }
+
+    66% {
+      opacity: 1;
+      scale: 1;
+      translate: calc(var(--dir) * var(--travel) * -1) 0;
+    }
+
+    82%,
+    100% {
+      opacity: 0;
+      scale: 0.9;
+      translate: calc(var(--dir) * var(--travel) * -1) 0;
+    }
+  }
+
+  @keyframes swipe-label {
+    0% {
+      opacity: 0;
+      filter: blur(4px);
+    }
+
+    7%,
+    88% {
       opacity: 1;
       filter: none;
+    }
+
+    100% {
+      opacity: 0;
+      filter: blur(4px);
     }
   }
 
@@ -263,6 +370,7 @@ const links = [
   .card {
     --swap: 240ms var(--ease);
     --show: 150ms;
+    --travel: 56px;
 
     position: absolute;
     top: calc(100% + 10px);
@@ -436,6 +544,8 @@ const links = [
 
   @media (prefers-reduced-motion: reduce) {
     .card {
+      --travel: 0px;
+
       scale: none;
       transition:
         opacity var(--show),
