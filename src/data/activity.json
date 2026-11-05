@@ -469,6 +469,10 @@
       "commits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
       "stars": 0
     },
+    "prompt-picker": {
+      "commits": [0, 0, 0, 0, 0, 0, 4, 13, 1, 0, 2, 0],
+      "stars": 0
+    },
     "pi-context-control": {
       "commits": [0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0],
       "stars": 0
@@ -476,6 +480,14 @@
     "herdr-drovr": {
       "commits": [0, 0, 0, 0, 0, 0, 2, 16, 3, 0, 0, 0],
       "stars": 26
+    },
+    "vim-herdr-navigator": {
+      "commits": [0, 0, 0, 0, 0, 0, 23, 7, 0, 0, 0, 0],
+      "stars": 0
+    },
+    "persistence-scope.nvim": {
+      "commits": [0, 0, 0, 0, 0, 19, 0, 1, 0, 0, 0, 0],
+      "stars": 2
     },
     "seqno": {
       "commits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 354, 147],
@@ -493,8 +505,16 @@
       "commits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 137, 0],
       "stars": 0
     },
+    "textpeek": {
+      "commits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+      "stars": 0
+    },
     "snailmail": {
       "commits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 68],
+      "stars": 0
+    },
+    "survay": {
+      "commits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0],
       "stars": 0
     },
     "detour": {
