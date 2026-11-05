@@ -1,8 +1,8 @@
 :root {
   --code-bg: light-dark(#c8cbce, var(--screen));
   --code-fg: light-dark(#24272a, #c1c4c8);
-  --code-punct: light-dark(#55585c, #777b7f);
-  --code-comment: light-dark(#615953, #7a736e);
+  --code-punct: light-dark(#525458, #777b7f);
+  --code-comment: light-dark(#5b534e, #7f7873);
   --code-keyword: light-dark(#2c4667, #92a6c1);
   --code-string: light-dark(#3b4e30, #a6b79e);
   --code-constant: light-dark(#633849, #c3a0ac);
