@@ -29,6 +29,7 @@ const format = new Intl.NumberFormat("en-US", { notation: "compact" });
     projects.map(({ id, repo: slug, blurb, site }, index) => {
       const repo = repos[id];
       const stars = repo && repo.stars >= 10 ? `★ ${format.format(repo.stars)}` : "";
+      const commits = repo?.commits.reduce((total, count) => total + count, 0) ?? 0;
       return (
         <li data-readout>
           <span class="index dot">{String(index + 1).padStart(2, "0")}</span>
@@ -39,7 +40,7 @@ const format = new Intl.NumberFormat("en-US", { notation: "compact" });
             {versions.has(id) && <span class="version">v{versions.get(id)}</span>}
             <p>{blurb}</p>
           </div>
-          <a class="meter" href={`https://github.com/${slug}`} aria-label={`${id} on GitHub`} data-boot>
+          <a class="meter" href={`https://github.com/${slug}`} aria-label={`${id} on GitHub, ${commits} commit${commits === 1 ? "" : "s"} in the last 12 months`} data-boot>
             {repo?.commits.map((count, i) => (
               <span class="month" data-tip data-tip-text={`${count} · ${months[i]}`}>
                 {[5, 4, 3, 2, 1].map((n) => (
