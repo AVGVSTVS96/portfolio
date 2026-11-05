@@ -75,6 +75,7 @@ export const projects: Project[] = [
     id: "brand-it",
     repo: "AVGVSTVS96/brand-it",
     blurb: "A skill that brands a project from its own parts, all as code.",
+    site: "https://brand-it-seven.vercel.app",
   },
   {
     id: "comet-kvm-plugin",
