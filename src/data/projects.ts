@@ -32,6 +32,12 @@ export const projects: Project[] = [
     site: "https://autofork.com",
   },
   {
+    id: "patch-md",
+    repo: "AVGVSTVS96/PATCH.md",
+    blurb: "Agent-healable source patches, written in markdown.",
+    site: "https://patchmd.vercel.app",
+  },
+  {
     id: "hex",
     repo: "AVGVSTVS96/hex",
     blurb: "Claude Code as your personal assistant, in the chat app you pick.",
@@ -44,15 +50,10 @@ export const projects: Project[] = [
       "Call hex from your iPhone. GPT-Live talks, Claude Code does the work.",
   },
   {
-    id: "better-github-skill",
-    repo: "AVGVSTVS96/better-github-skill",
-    blurb: "A GitHub skill for coding agents. One bounded call per question.",
-  },
-  {
-    id: "patch-md",
-    repo: "AVGVSTVS96/PATCH.md",
-    blurb: "Agent-healable source patches, written in markdown.",
-    site: "https://patchmd.vercel.app",
+    id: "enclave",
+    repo: "AVGVSTVS96/enclave",
+    blurb: "Agents ask for a password with a one-time link only they can open.",
+    site: "https://enclave-pink.vercel.app",
   },
   {
     id: "commonplace",
@@ -61,10 +62,40 @@ export const projects: Project[] = [
     site: "https://commonplace-eight-sable.vercel.app",
   },
   {
-    id: "enclave",
-    repo: "AVGVSTVS96/enclave",
-    blurb: "Agents ask for a password with a one-time link only they can open.",
-    site: "https://enclave-pink.vercel.app",
+    id: "pigeon",
+    repo: "AVGVSTVS96/pigeon",
+    blurb: "iMessage from the terminal, with filters on what agents can see.",
+  },
+  {
+    id: "better-github-skill",
+    repo: "AVGVSTVS96/better-github-skill",
+    blurb: "A GitHub skill for coding agents. One bounded call per question.",
+  },
+  {
+    id: "brand-it",
+    repo: "AVGVSTVS96/brand-it",
+    blurb: "A skill that brands a project from its own parts, all as code.",
+  },
+  {
+    id: "comet-kvm-plugin",
+    repo: "AVGVSTVS96/comet-kvm-plugin",
+    blurb:
+      "Gives coding agents eyes and hands on a real computer, through a KVM.",
+  },
+  {
+    id: "oomph",
+    repo: "AVGVSTVS96/oomph",
+    blurb: "Keeps coding agents from running Linux out of memory.",
+  },
+  {
+    id: "speed",
+    repo: "AVGVSTVS96/speed",
+    blurb: "True tokens per second for every Claude Code and Codex response.",
+  },
+  {
+    id: "pi-context-control",
+    repo: "AVGVSTVS96/pi-context-control",
+    blurb: "See and edit what's in a pi agent's context window.",
   },
   {
     id: "herdr-drovr",
@@ -78,60 +109,17 @@ export const projects: Project[] = [
     site: "https://seqno.vercel.app",
   },
   {
+    id: "iikb",
+    repo: "AVGVSTVS96/iikb",
+    blurb:
+      "An iPhone keyboard that types like Apple's and learns where you tap.",
+    site: "https://iikb.vercel.app",
+  },
+  {
     id: "retake",
     repo: "AVGVSTVS96/retake",
     blurb: "Apple's Voice Memos, rebuilt in SwiftUI. Never loses a take.",
     site: "https://retake-seven.vercel.app",
-  },
-  {
-    id: "iikb",
-    repo: "AVGVSTVS96/iikb",
-    blurb:
-      "An iPhone keyboard that feels like Apple's and learns where you tap.",
-    site: "https://iikb.vercel.app",
-  },
-  {
-    id: "brand-it",
-    repo: "AVGVSTVS96/brand-it",
-    blurb: "A skill that brands a project from its own parts, all as code.",
-  },
-  {
-    id: "pi-context-control",
-    repo: "AVGVSTVS96/pi-context-control",
-    blurb: "See and edit what's in a pi agent's context window.",
-  },
-  {
-    id: "comet-kvm-plugin",
-    repo: "AVGVSTVS96/comet-kvm-plugin",
-    blurb:
-      "Gives coding agents eyes and hands on a real computer, through a KVM.",
-  },
-  {
-    id: "speed",
-    repo: "AVGVSTVS96/speed",
-    blurb: "True tokens per second for every Claude Code and Codex response.",
-  },
-  {
-    id: "oomph",
-    repo: "AVGVSTVS96/oomph",
-    blurb: "Keeps coding agents from running Linux out of memory.",
-  },
-  {
-    id: "lakhs",
-    repo: "AVGVSTVS96/lakhs",
-    blurb: "A minimal INR/USD converter that speaks lakhs and crores.",
-    site: "https://lakhs.app",
-  },
-  {
-    id: "openleaf",
-    repo: "AVGVSTVS96/openleaf",
-    blurb: "Minimal, end-to-end encrypted markdown notes.",
-    site: "https://openleaf-peach.vercel.app",
-  },
-  {
-    id: "antibody",
-    repo: "AVGVSTVS96/antibody",
-    blurb: "X-ray any US federal bill: what's buried, who paid, who profits.",
   },
   {
     id: "said",
@@ -151,8 +139,20 @@ export const projects: Project[] = [
     site: "https://detour-steel.vercel.app",
   },
   {
-    id: "pigeon",
-    repo: "AVGVSTVS96/pigeon",
-    blurb: "An iMessage CLI with pluggable sources.",
+    id: "antibody",
+    repo: "AVGVSTVS96/antibody",
+    blurb: "X-ray any US federal bill: what's buried, who paid, who profits.",
+  },
+  {
+    id: "openleaf",
+    repo: "AVGVSTVS96/openleaf",
+    blurb: "Minimal, end-to-end encrypted markdown notes.",
+    site: "https://openleaf-peach.vercel.app",
+  },
+  {
+    id: "lakhs",
+    repo: "AVGVSTVS96/lakhs",
+    blurb: "A minimal INR/USD converter that speaks lakhs and crores.",
+    site: "https://lakhs.app",
   },
 ];
