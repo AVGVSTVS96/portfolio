@@ -352,7 +352,7 @@ const history = {
 
     .range {
       margin: 0;
-      opacity: 0.6;
+      opacity: var(--seg-dim);
     }
 
     .close {
@@ -360,7 +360,7 @@ const history = {
       border: 0;
       padding: 8px 0 8px 10px;
       cursor: pointer;
-      opacity: 0.6;
+      opacity: var(--seg-dim);
     }
 
     .close:hover, .close:focus-visible {
@@ -422,7 +422,7 @@ const history = {
 
     .unit,
     .when {
-      opacity: 0.6;
+      opacity: var(--seg-dim);
     }
 
     .when {
@@ -464,7 +464,7 @@ const history = {
       overflow: visible;
       font-size: 9px;
       letter-spacing: 0.1em;
-      opacity: 0.45;
+      opacity: var(--seg-dim);
     }
 
     .month:not([data-wide]) {
@@ -539,7 +539,7 @@ const history = {
     .track > :not(.tick) {
       font-size: 9px;
       letter-spacing: 0.1em;
-      opacity: 0.6;
+      opacity: var(--seg-dim);
       transition: opacity 120ms;
     }
 
@@ -577,7 +577,7 @@ const history = {
       grid-row: 1;
       width: 0;
       overflow: visible;
-      opacity: 0.45;
+      opacity: var(--seg-dim);
     }
 
     @container (width < 420px) {
