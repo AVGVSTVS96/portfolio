@@ -93,6 +93,11 @@ export const projects: Project[] = [
     blurb: "True tokens per second for every Claude Code and Codex response.",
   },
   {
+    id: "prompt-picker",
+    repo: "AVGVSTVS96/prompt-picker",
+    blurb: "Search every prompt you've sent to Claude Code, Codex and pi.",
+  },
+  {
     id: "pi-context-control",
     repo: "AVGVSTVS96/pi-context-control",
     blurb: "See and edit what's in a pi agent's context window.",
@@ -101,6 +106,16 @@ export const projects: Project[] = [
     id: "herdr-drovr",
     repo: "AVGVSTVS96/herdr-drovr",
     blurb: "Move herdr panes and tabs between workspaces.",
+  },
+  {
+    id: "vim-herdr-navigator",
+    repo: "AVGVSTVS96/vim-herdr-navigator",
+    blurb: "Move between Vim splits and herdr panes as if they were one grid.",
+  },
+  {
+    id: "persistence-scope.nvim",
+    repo: "AVGVSTVS96/persistence-scope.nvim",
+    blurb: "One repo, many Neovim sessions, each scoped to its tmux window.",
   },
   {
     id: "seqno",
@@ -127,10 +142,22 @@ export const projects: Project[] = [
     blurb: "Dictation that doesn't edit you.",
   },
   {
+    id: "textpeek",
+    repo: "AVGVSTVS96/textpeek",
+    blurb: "macOS message previews, but only for people you don't know.",
+  },
+  {
     id: "snailmail",
     repo: "AVGVSTVS96/snailmail",
     blurb: "A letter, sent as a link, that opens like real mail.",
     site: "https://snailmail-olive.vercel.app",
+  },
+  {
+    id: "survay",
+    repo: "AVGVSTVS96/survay",
+    blurb:
+      "A survey app you run yourself: one question at a time, one SQLite file.",
+    site: "https://survay-site.vercel.app",
   },
   {
     id: "detour",
