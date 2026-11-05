@@ -1,3 +1,5 @@
+import { setTimeout as sleep } from "node:timers/promises";
+
 import { z } from "astro/zod";
 
 import activity from "../data/activity.json";
@@ -10,17 +12,49 @@ const day = z.object({
 
 export type Day = z.infer<typeof day>;
 
+const ATTEMPTS = 3;
+
+const responses = new Map<string, Promise<Response>>();
+
+const attempt = async (url: string) => {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+
+    return response.ok
+      ? response
+      : new Error(`${url} answered ${response.status}`);
+  } catch (error) {
+    return new Error(`${url} failed`, { cause: error });
+  }
+};
+
+const request = async (url: string, tries = 1): Promise<Response> => {
+  const result = await attempt(url);
+
+  if (result instanceof Response) {
+    return result;
+  }
+
+  if (tries >= ATTEMPTS) {
+    throw result;
+  }
+
+  await sleep(tries * 2000);
+
+  return await request(url, tries + 1);
+};
+
 const fetchJson = async <T extends z.ZodType>(
   url: string,
   schema: T
 ): Promise<z.infer<T>> => {
-  const response = await fetch(url);
+  const pending = responses.get(url) ?? request(url);
 
-  if (!response.ok) {
-    throw new Error(`${url} answered ${response.status}`);
-  }
+  responses.set(url, pending);
 
-  return schema.parse(await response.json());
+  const response = await pending;
+
+  return schema.parse(await response.clone().json());
 };
 
 const calendar = z
