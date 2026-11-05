@@ -38,6 +38,12 @@ export const projects: Project[] = [
     site: "https://hex-sand.vercel.app",
   },
   {
+    id: "hex-voice",
+    repo: "AVGVSTVS96/hex-voice",
+    blurb:
+      "Call hex from your iPhone. GPT-Live talks, Claude Code does the work.",
+  },
+  {
     id: "better-github-skill",
     repo: "AVGVSTVS96/better-github-skill",
     blurb: "A GitHub skill for coding agents. One bounded call per question.",
@@ -95,6 +101,22 @@ export const projects: Project[] = [
     blurb: "See and edit what's in a pi agent's context window.",
   },
   {
+    id: "comet-kvm-plugin",
+    repo: "AVGVSTVS96/comet-kvm-plugin",
+    blurb:
+      "Gives coding agents eyes and hands on a real computer, through a KVM.",
+  },
+  {
+    id: "speed",
+    repo: "AVGVSTVS96/speed",
+    blurb: "True tokens per second for every Claude Code and Codex response.",
+  },
+  {
+    id: "oomph",
+    repo: "AVGVSTVS96/oomph",
+    blurb: "Keeps coding agents from running Linux out of memory.",
+  },
+  {
     id: "lakhs",
     repo: "AVGVSTVS96/lakhs",
     blurb: "A minimal INR/USD converter that speaks lakhs and crores.",
@@ -105,5 +127,32 @@ export const projects: Project[] = [
     repo: "AVGVSTVS96/openleaf",
     blurb: "Minimal, end-to-end encrypted markdown notes.",
     site: "https://openleaf-peach.vercel.app",
+  },
+  {
+    id: "antibody",
+    repo: "AVGVSTVS96/antibody",
+    blurb: "X-ray any US federal bill: what's buried, who paid, who profits.",
+  },
+  {
+    id: "said",
+    repo: "AVGVSTVS96/said",
+    blurb: "Dictation that doesn't edit you.",
+  },
+  {
+    id: "snailmail",
+    repo: "AVGVSTVS96/snailmail",
+    blurb: "A letter, sent as a link, that opens like real mail.",
+    site: "https://snailmail-olive.vercel.app",
+  },
+  {
+    id: "detour",
+    repo: "AVGVSTVS96/detour",
+    blurb: "The best drives near you: twisty, scenic, quiet roads, ranked.",
+    site: "https://detour-steel.vercel.app",
+  },
+  {
+    id: "pigeon",
+    repo: "AVGVSTVS96/pigeon",
+    blurb: "An iMessage CLI with pluggable sources.",
   },
 ];
