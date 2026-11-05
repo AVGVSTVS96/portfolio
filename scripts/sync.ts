@@ -5,39 +5,20 @@ import { projects } from "../src/data/projects";
 const USER = "AVGVSTVS96";
 const MONTHS = 12;
 const WINDOW = 30;
-const ZONE = "America/Los_Angeles";
-const ATTEMPTS = 3;
-const DAY = 86_400_000;
 
 const gh = (args: string[], jq: string) => {
-  let error = "";
+  const proc = Bun.spawnSync(["gh", "api", ...args, "--paginate", "--jq", jq]);
 
-  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
-    const proc = Bun.spawnSync([
-      "gh",
-      "api",
-      ...args,
-      "--paginate",
-      "--jq",
-      jq,
-    ]);
-
-    if (proc.exitCode === 0) {
-      return proc.stdout.toString().trim().split("\n").filter(Boolean);
-    }
-
-    error = proc.stderr.toString();
-
-    if (attempt < ATTEMPTS) {
-      console.log(`gh api ${args[0]} failed, retrying: ${error.trim()}`);
-      Bun.sleepSync(attempt * 10_000);
-    }
+  if (proc.exitCode !== 0) {
+    throw new Error(`gh api ${args[0]}: ${proc.stderr.toString()}`);
   }
 
-  throw new Error(`gh api ${args[0]}: ${error}`);
+  return proc.stdout.toString().trim().split("\n").filter(Boolean);
 };
 
-const local = new Intl.DateTimeFormat("en-CA", { timeZone: ZONE });
+const local = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Los_Angeles",
+});
 
 const now = new Date(`${local.format(new Date())}T00:00:00Z`);
 
@@ -110,62 +91,26 @@ const first = new Date(year.days[0]?.date ?? now);
 
 first.setUTCDate(first.getUTCDate() - WINDOW + 1);
 
-const last = Math.max(
-  now.getTime(),
-  Date.parse(year.days.at(-1)?.date ?? "") || 0
-);
-
 const days = Array.from(
-  { length: Math.round((last - first.getTime()) / DAY) + 1 },
-  (_, i) => new Date(first.getTime() + i * DAY).toISOString().slice(0, 10)
+  { length: Math.round((now.getTime() - first.getTime()) / 86_400_000) + 1 },
+  (_, i) =>
+    new Date(first.getTime() + i * 86_400_000).toISOString().slice(0, 10)
 );
 
-const wall = new Intl.DateTimeFormat("en-US", {
-  timeZone: ZONE,
-  hourCycle: "h23",
-  year: "numeric",
-  month: "numeric",
-  day: "numeric",
-  hour: "numeric",
-  minute: "numeric",
-  second: "numeric",
+const zone = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Los_Angeles",
+  timeZoneName: "longOffset",
 });
 
-const offset = (instant: number) => {
-  const parts = wall.formatToParts(instant);
-
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((entry) => entry.type === type)?.value ?? 0);
-
-  return (
-    Date.UTC(
-      part("year"),
-      part("month") - 1,
-      part("day"),
-      part("hour"),
-      part("minute"),
-      part("second")
-    ) - instant
-  );
-};
-
-const midnight = (date: string) => {
-  const utc = Date.parse(`${date}T00:00:00Z`);
-
-  return utc - offset(utc - offset(utc));
-};
-
-const tomorrow = (date: string) =>
-  new Date(Date.parse(`${date}T00:00:00Z`) + DAY).toISOString().slice(0, 10);
-
-const at = (instant: number) => new Date(instant).toISOString();
+const at = (date: string, time: string) =>
+  `${date}T${time}${zone.format(new Date(`${date}T12:00:00Z`)).split("GMT")[1] || "Z"}`;
 
 const byRepository = (connection: string) =>
   `${connection}(maxRepositories: 100) { repository { nameWithOwner } contributions { totalCount } }`;
 
 const windows = days.map(
   (date, i) =>
-    `d${i}: contributionsCollection(from: "${at(midnight(date))}", to: "${at(midnight(tomorrow(date)) - 1000)}") { restrictedContributionsCount ${[
+    `d${i}: contributionsCollection(from: "${at(date, "00:00:00")}", to: "${at(date, "23:59:59")}") { restrictedContributionsCount ${[
       "commitContributionsByRepository",
       "pullRequestContributionsByRepository",
       "pullRequestReviewContributionsByRepository",
@@ -218,12 +163,6 @@ for (const [i, date] of days.entries()) {
     );
     entry.count = counted;
   }
-}
-
-const peak = Math.max(...year.days.map(({ count }) => count), 1);
-
-for (const day of year.days) {
-  day.level = day.count === 0 ? 0 : Math.ceil((4 * day.count) / peak);
 }
 
 year.total = sum(year.days.map(({ count }) => count));
