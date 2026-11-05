@@ -15,14 +15,16 @@ const date = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", y
 ---
 
 <Base title={`${post.data.title} · Bassim Shahidy`} description={post.data.description}>
-  <article>
-    <a class="back label" href="/#writing">← Writing</a>
-    <time class="label" datetime={post.data.pubDate.toISOString()}>{date.format(post.data.pubDate)}</time>
-    <h1>{post.data.title}</h1>
-    <div class="prose">
-      <Content />
-    </div>
-  </article>
+  <main>
+    <article>
+      <a class="back label" href="/#writing">← Writing</a>
+      <time class="label" datetime={post.data.pubDate.toISOString()}>{date.format(post.data.pubDate)}</time>
+      <h1>{post.data.title}</h1>
+      <div class="prose">
+        <Content />
+      </div>
+    </article>
+  </main>
 </Base>
 
 <style>
@@ -37,7 +39,8 @@ const date = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", y
 
   .back {
     display: block;
-    margin-bottom: 28px;
+    margin-block: -10px 18px;
+    padding-block: 10px;
     transition: color 160ms;
   }
 
