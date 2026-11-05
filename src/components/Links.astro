@@ -150,7 +150,8 @@ const links = [
 
       const bounds = nav.getBoundingClientRect();
       const center = link.offsetLeft + link.offsetWidth / 2;
-      const width = panel.offsetWidth;
+      const width = panel.offsetWidth + card.offsetWidth - card.clientWidth;
+      const height = panel.offsetHeight + card.offsetHeight - card.clientHeight;
 
       const left = Math.min(
         Math.max(center - width / 2, Math.max(0, 12 - bounds.left)),
@@ -160,7 +161,7 @@ const links = [
       const opening = !Object.hasOwn(card.dataset, "open");
       card.toggleAttribute("data-instant", opening);
       card.style.setProperty("--w", `${width}px`);
-      card.style.setProperty("--h", `${panel.offsetHeight}px`);
+      card.style.setProperty("--h", `${height}px`);
       card.style.setProperty("--x", `${left}px`);
       card.style.setProperty("--origin", `${center - left}px`);
 
