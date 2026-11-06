@@ -42,3 +42,7 @@ The README headers are rendered from `og/og.html` in both finishes. The share ca
 `bun run deploy` runs `scripts/deploy.sh`: it takes a clean copy of committed `main`, installs locked dependencies, refreshes and commits the activity data, fast-forwards `main`, pushes it to GitHub, builds, and deploys to the Vercel project `portfolio`. Commits use the local Git signing configuration. The daily `portfolio-sync` timer runs the same script at 5am.
 
 The production address is **https://bassim.im**. Canonical links, Open Graph URLs and the sitemap use Vercel's `VERCEL_PROJECT_PRODUCTION_URL`, with `bassim.im` as the local fallback.
+
+## License
+
+The code is MIT. The posts in `src/content/posts/` are mine; ask before republishing them.
