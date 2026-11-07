@@ -11,6 +11,28 @@ const versions = new Map(
 
 const repos: Record<string, { stars: number; commits: number[] }> = activity.repos;
 
+const featured = ["iikb", "seqno", "autofork"];
+const recentWork = (commits: number[]) => commits.reduce((sum, count, month) => sum + count * (month + 1), 0);
+
+const rank = (id: string) => {
+  const { stars = 0, commits = [] } = repos[id] ?? {};
+
+  if (stars >= 10) {
+    return [0, -stars];
+  }
+
+  if (featured.includes(id)) {
+    return [1, featured.indexOf(id)];
+  }
+
+  return [2, -recentWork(commits)];
+};
+
+const ranked = projects
+  .map((project) => ({ project, rank: rank(project.id) }))
+  .toSorted((a, b) => a.rank[0] - b.rank[0] || a.rank[1] - b.rank[1])
+  .map(({ project }) => project);
+
 const nonzero = Object.values(repos)
   .flatMap(({ commits }) => commits)
   .filter((count) => count > 0)
@@ -26,7 +48,7 @@ const format = new Intl.NumberFormat("en-US", { notation: "compact" });
 
 <ol class="works">
   {
-    projects.map(({ id, repo: slug, blurb, site }, index) => {
+    ranked.map(({ id, repo: slug, blurb, site }, index) => {
       const repo = repos[id];
       const stars = repo && repo.stars >= 10 ? `★ ${format.format(repo.stars)}` : "";
       const commits = repo?.commits.reduce((total, count) => total + count, 0) ?? 0;
