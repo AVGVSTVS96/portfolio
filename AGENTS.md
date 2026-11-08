@@ -18,4 +18,4 @@ Bassim's personal site. Astro 7, static, no UI framework. Japanese 90s electroni
 - `Links.astro` is the morphing hover card: one card resizes and slides between panels that crossfade with blur.
 - `site` is Vercel's production domain (`VERCEL_PROJECT_PRODUCTION_URL`), so canonical, og and sitemap URLs follow wherever it's deployed.
 - DotGothic16 is downloaded as a subset of printable ASCII plus every kana and kanji in `src/**/*.astro`; new Japanese text is picked up on the next build.
-- `og/og.html` draws `public/og.png` from the real tokens and `activity.json`: `bun ~/.agents/skills/brand-it/scripts/shoot.mjs og/og.html 1200x630 public/og.png`. `og/apple-touch-icon.svg` makes `public/apple-touch-icon.png`.
+- `bun run og` draws `public/og.png` from `og/og.html` (the real tokens and `activity.json`) and `public/apple-touch-icon.png` from `og/apple-touch-icon.svg`, in installed Chrome.

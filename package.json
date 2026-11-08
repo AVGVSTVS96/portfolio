@@ -8,6 +8,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "sync": "bun scripts/sync.ts",
+    "og": "bun scripts/og.ts",
     "deploy": "sh scripts/deploy.sh",
     "check": "astro sync && astro-check && oxlint && oxfmt --check",
     "fix": "oxlint --fix; oxfmt",
@@ -26,6 +27,7 @@
     "oxfmt": "0.77.0",
     "oxlint": "1.92.0",
     "oxlint-tsgolint": "7.0.2006",
+    "puppeteer-core": "25.16.0",
     "simple-icons": "16.37.0",
     "typescript": "6.0.3",
     "ultracite": "8.1.1"
