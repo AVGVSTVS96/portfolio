@@ -5,15 +5,10 @@ import { defineConfig, fontProviders } from "astro/config";
 
 import { codeTheme } from "./src/lib/code-theme";
 
-const ascii = Array.from({ length: 95 }, (_, index) =>
-  String.fromCodePoint(index + 32)
-);
+const ascii = Array.from({ length: 95 }, (_, index) => String.fromCodePoint(index + 32));
 
 const japanese = globSync("src/**/*.astro").flatMap(
-  (file) =>
-    readFileSync(file, "utf-8").match(
-      /[\p{scx=Hira}\p{scx=Kana}\p{scx=Han}]/gu
-    ) ?? []
+  (file) => readFileSync(file, "utf-8").match(/[\p{scx=Hira}\p{scx=Kana}\p{scx=Han}]/gu) ?? [],
 );
 
 export default defineConfig({

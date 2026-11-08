@@ -24,14 +24,14 @@ bun dev
 
 ## What's where
 
-| Path | Content |
-| --- | --- |
-| `src/data/projects.ts` | Projects, their order and links |
-| `src/data/activity.json` | GitHub contribution calendar, project history and stars |
-| `src/content/posts/` | Markdown posts and YAML links to writing elsewhere |
-| `src/components/` | Activity displays, project rows and the profile card |
-| `src/styles/global.css` | Shared styles and both finishes |
-| `og/` | Source artwork for the share card, README headers and touch icon |
+| Path                     | Content                                                          |
+| ------------------------ | ---------------------------------------------------------------- |
+| `src/data/projects.ts`   | Projects, their order and links                                  |
+| `src/data/activity.json` | GitHub contribution calendar, project history and stars          |
+| `src/content/posts/`     | Markdown posts and YAML links to writing elsewhere               |
+| `src/components/`        | Activity displays, project rows and the profile card             |
+| `src/styles/global.css`  | Shared styles and both finishes                                  |
+| `og/`                    | Source artwork for the share card, README headers and touch icon |
 
 The README headers are rendered from `og/og.html` in both finishes. The share card uses the same styles and contribution snapshot as the site.
 

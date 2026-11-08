@@ -11,8 +11,7 @@ export const projects: Project[] = [
   {
     id: "react-shiki",
     repo: "AVGVSTVS96/react-shiki",
-    blurb:
-      "Syntax highlighting hook and component for React, powered by Shiki.",
+    blurb: "Syntax highlighting hook and component for React, powered by Shiki.",
     npm: "react-shiki",
     site: "https://react-shiki.vercel.app",
   },
@@ -46,8 +45,7 @@ export const projects: Project[] = [
   {
     id: "hex-voice",
     repo: "AVGVSTVS96/hex-voice",
-    blurb:
-      "Call hex from your iPhone. GPT-Live talks, Claude Code does the work.",
+    blurb: "Call hex from your iPhone. GPT-Live talks, Claude Code does the work.",
   },
   {
     id: "enclave",
@@ -80,8 +78,7 @@ export const projects: Project[] = [
   {
     id: "comet-kvm-plugin",
     repo: "AVGVSTVS96/comet-kvm-plugin",
-    blurb:
-      "Gives coding agents eyes and hands on a real computer, through a KVM.",
+    blurb: "Gives coding agents eyes and hands on a real computer, through a KVM.",
   },
   {
     id: "oomph",
@@ -127,8 +124,7 @@ export const projects: Project[] = [
   {
     id: "iikb",
     repo: "AVGVSTVS96/iikb",
-    blurb:
-      "An iPhone keyboard that types like Apple's and learns where you tap.",
+    blurb: "An iPhone keyboard that types like Apple's and learns where you tap.",
     site: "https://iikb.vercel.app",
   },
   {
@@ -156,8 +152,7 @@ export const projects: Project[] = [
   {
     id: "survay",
     repo: "AVGVSTVS96/survay",
-    blurb:
-      "A survey app you run yourself: one question at a time, one SQLite file.",
+    blurb: "A survey app you run yourself: one question at a time, one SQLite file.",
     site: "https://survay-site.vercel.app",
   },
   {

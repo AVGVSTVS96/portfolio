@@ -13,12 +13,7 @@ export const codeTheme: ShikiConfig["theme"] = {
     "editor.background": "var(--code-bg)",
   },
   tokenColors: [
-    token("punct", [
-      "punctuation",
-      "keyword.operator",
-      "meta.brace",
-      "punctuation.definition.tag",
-    ]),
+    token("punct", ["punctuation", "keyword.operator", "meta.brace", "punctuation.definition.tag"]),
     token("comment", ["comment", "punctuation.definition.comment"]),
     token("keyword", [
       "keyword",
@@ -36,16 +31,8 @@ export const codeTheme: ShikiConfig["theme"] = {
       "markup.inline.raw",
       "markup.underline.link",
     ]),
-    token("constant", [
-      "constant",
-      "support.constant",
-      "constant.character.escape",
-    ]),
-    token("function", [
-      "entity.name.function",
-      "support.function",
-      "meta.function-call.generic",
-    ]),
+    token("constant", ["constant", "support.constant", "constant.character.escape"]),
+    token("function", ["entity.name.function", "support.function", "meta.function-call.generic"]),
     token("type", [
       "entity.name.type",
       "entity.name.class",
