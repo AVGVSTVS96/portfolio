@@ -20,9 +20,7 @@ const attempt = async (url: string) => {
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
 
-    return response.ok
-      ? response
-      : new Error(`${url} answered ${response.status}`);
+    return response.ok ? response : new Error(`${url} answered ${response.status}`);
   } catch (error) {
     return new Error(`${url} failed`, { cause: error });
   }
@@ -44,10 +42,7 @@ const request = async (url: string, tries = 1): Promise<Response> => {
   return await request(url, tries + 1);
 };
 
-const fetchJson = async <T extends z.ZodType>(
-  url: string,
-  schema: T
-): Promise<z.infer<T>> => {
+const fetchJson = async <T extends z.ZodType>(url: string, schema: T): Promise<z.infer<T>> => {
   const pending = responses.get(url) ?? request(url);
 
   responses.set(url, pending);
@@ -57,9 +52,7 @@ const fetchJson = async <T extends z.ZodType>(
   return schema.parse(await response.clone().json());
 };
 
-const calendar = z
-  .object({ days: z.array(day), total: z.number() })
-  .parse(activity.calendar);
+const calendar = z.object({ days: z.array(day), total: z.number() }).parse(activity.calendar);
 
 const WEEKS = 52;
 
@@ -85,7 +78,7 @@ export const contributions = {
 export const npmVersion = async (name: string) => {
   const latest = await fetchJson(
     `https://registry.npmjs.org/${name}/latest`,
-    z.object({ version: z.string() })
+    z.object({ version: z.string() }),
   );
 
   return latest.version;
@@ -96,7 +89,7 @@ export const npmWeekly = async (name: string) => {
     `https://api.npmjs.org/downloads/range/last-year/${name}`,
     z.object({
       downloads: z.array(z.object({ day: z.string(), downloads: z.number() })),
-    })
+    }),
   );
 
   const totals: number[] = [];

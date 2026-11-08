@@ -77,11 +77,7 @@
       .cell {
         aspect-ratio: 1;
         border-radius: 2px;
-        background: color-mix(
-          in oklab,
-          var(--seg) calc(var(--glow) * 100%),
-          var(--screen)
-        );
+        background: color-mix(in oklab, var(--seg) calc(var(--glow) * 100%), var(--screen));
       }
 
       .cell[data-level="4"] {
@@ -96,14 +92,10 @@
     </header>
     <p class="kana dot">バシム・シャヒディ</p>
     <h1>Bassim Shahidy</h1>
-    <p class="lede">
-      I build dev tools, interfaces and a lot of open-source projects.
-    </p>
+    <p class="lede">I build dev tools, interfaces and a lot of open-source projects.</p>
     <div class="screen"></div>
     <script type="module">
-      const { calendar } = await (
-        await fetch("/src/data/activity.json")
-      ).json();
+      const { calendar } = await (await fetch("/src/data/activity.json")).json();
       const { days } = calendar;
       const counts = days
         .map((day) => day.count)
@@ -120,8 +112,7 @@
       }
 
       for (const { count } of days) {
-        const level =
-          count === 0 ? 0 : 1 + cuts.filter((cut) => count > cut).length;
+        const level = count === 0 ? 0 : 1 + cuts.filter((cut) => count > cut).length;
         const cell = document.createElement("span");
         cell.className = "cell";
         cell.dataset.level = level;

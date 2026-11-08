@@ -5,7 +5,7 @@ Bassim's personal site. Astro 7, static, no UI framework. Japanese 90s electroni
 ## Commands
 
 - `bun dev` (or `astro dev --background`), `bun run build`.
-- `bun run check` before finishing: astro check, type-aware oxlint with anti-slop, oxfmt. lefthook runs it on every commit.
+- `bun run check` before finishing: astro check, type-aware oxlint with anti-slop, oxfmt. lefthook runs it on every commit. TypeScript stays on 6 because `astro-check` refuses 7.0.
 - `bun run fix` rewrites what it can.
 - `bun run sync` refreshes `src/data/activity.json` with the `gh` CLI: the year's contribution calendar, the last 30 days of contributions per repo, and per-project commits by month and stars.
 - `bun run deploy` deploys: it syncs, commits the data and runs `vercel deploy --prod` from a clean copy of committed `main`, so work in progress never ships. The 5am `portfolio-sync` timer runs it.

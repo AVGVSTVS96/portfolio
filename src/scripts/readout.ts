@@ -1,7 +1,5 @@
 const tipAt = (target: EventTarget | null) =>
-  target instanceof Element
-    ? (target.closest<HTMLElement>("[data-tip]") ?? undefined)
-    : undefined;
+  target instanceof Element ? (target.closest<HTMLElement>("[data-tip]") ?? undefined) : undefined;
 
 export const write = (slot: HTMLElement, text: string) => {
   if (slot.dataset.group === undefined) {
@@ -21,13 +19,11 @@ export const write = (slot: HTMLElement, text: string) => {
       comma.textContent = ",";
 
       return [comma, part];
-    })
+    }),
   );
 };
 
-for (const display of document.querySelectorAll<HTMLElement>(
-  "[data-readout]"
-)) {
+for (const display of document.querySelectorAll<HTMLElement>("[data-readout]")) {
   const slots = display.querySelectorAll<HTMLElement>("[data-show]");
   const scroll = display.querySelector<HTMLElement>(".calendar-scroll");
   let picked: HTMLElement | undefined;
@@ -40,10 +36,7 @@ for (const display of document.querySelectorAll<HTMLElement>(
 
     for (const slot of slots) {
       const key = slot.dataset.show ?? "";
-      write(
-        slot,
-        (picked ? picked.dataset[key] : undefined) ?? slot.dataset.idle ?? ""
-      );
+      write(slot, (picked ? picked.dataset[key] : undefined) ?? slot.dataset.idle ?? "");
     }
   };
 
@@ -93,10 +86,7 @@ for (const display of document.querySelectorAll<HTMLElement>(
     if (
       tip ||
       event.pointerType === "mouse" ||
-      !(
-        event.target instanceof Element &&
-        event.target.closest("button, summary")
-      )
+      !(event.target instanceof Element && event.target.closest("button, summary"))
     ) {
       show(tip);
     }
@@ -119,9 +109,7 @@ for (const display of document.querySelectorAll<HTMLElement>(
       return;
     }
 
-    const under = tipAt(
-      document.elementFromPoint(event.clientX, event.clientY)
-    );
+    const under = tipAt(document.elementFromPoint(event.clientX, event.clientY));
 
     if (under && display.contains(under)) {
       show(under);
@@ -129,10 +117,7 @@ for (const display of document.querySelectorAll<HTMLElement>(
   });
 
   scroll?.addEventListener("pointerdown", (event) => {
-    touch =
-      event.pointerType === "mouse"
-        ? undefined
-        : { x: event.clientX, y: event.clientY };
+    touch = event.pointerType === "mouse" ? undefined : { x: event.clientX, y: event.clientY };
 
     if (touch !== undefined) {
       show();

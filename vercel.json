@@ -1,1 +1,5 @@
-{ "$schema": "https://openapi.vercel.sh/vercel.json", "framework": "astro" }
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "astro",
+  "installCommand": "bun install --frozen-lockfile --ignore-scripts"
+}

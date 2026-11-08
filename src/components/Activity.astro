@@ -163,7 +163,7 @@ const history = {
         const fragment = template.content.cloneNode(true);
 
         if (!(fragment instanceof DocumentFragment)) {
-          throw new Error("Missing activity row");
+          throw new TypeError("Missing activity row");
         }
 
         const row = fragment.querySelector<HTMLElement>(".track");
