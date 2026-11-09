@@ -1,5 +1,6 @@
 ---
 import { getCollection, render } from "astro:content";
+import Arrow from "../../components/Arrow.astro";
 import Base from "../../layouts/Base.astro";
 import "../../styles/code.css";
 
@@ -18,7 +19,7 @@ const date = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", y
   <main>
     <article>
       <a class="back label" href="/#writing"
-        ><svg viewBox="0 0 10 8" width="10" height="8"><path d="M9 4H1.5M4 1 1 4l3 3" /></svg>Writing</a
+        ><Arrow />Writing</a
       >
       <time class="label" datetime={post.data.pubDate.toISOString()}>{date.format(post.data.pubDate)}</time>
       <h1>{post.data.title}</h1>
