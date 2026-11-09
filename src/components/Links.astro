@@ -209,22 +209,23 @@ const links = [
     }
 
     document.addEventListener("pointerdown", (event) => event.target instanceof Node && !nav.contains(event.target) && close());
-    let start = 0;
+    let start = { x: 0, y: 0 };
 
     card.addEventListener(
       "touchstart",
       (event) => {
         stopDemo();
-        start = event.touches[0]?.clientX ?? 0;
+        start = { x: event.touches[0]?.clientX ?? 0, y: event.touches[0]?.clientY ?? 0 };
       },
       { passive: true },
     );
     card.addEventListener("touchend", (event) => {
-      const distance = (event.changedTouches[0]?.clientX ?? start) - start;
+      const distance = (event.changedTouches[0]?.clientX ?? start.x) - start.x;
+      const rise = (event.changedTouches[0]?.clientY ?? start.y) - start.y;
       const index = links.findIndex((link) => Object.hasOwn(link.dataset, "current"));
       const next = links[index - Math.sign(distance)];
 
-      if (Math.abs(distance) > 40 && index !== -1 && next) {
+      if (Math.abs(distance) > 40 && Math.abs(distance) > Math.abs(rise) && index !== -1 && next) {
         localStorage.setItem("swiped", "");
         open(next);
       }
