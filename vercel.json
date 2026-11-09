@@ -1,5 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "astro",
-  "installCommand": "bun install --frozen-lockfile --ignore-scripts"
+  "installCommand": "bun install --frozen-lockfile --ignore-scripts",
+  "redirects": [
+    { "source": "/blog", "destination": "/#writing" },
+    { "source": "/about", "destination": "/" }
+  ]
 }
