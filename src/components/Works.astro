@@ -103,7 +103,8 @@ const format = new Intl.NumberFormat("en-US", { notation: "compact" });
   });
 
   const revealHash = () => {
-    const target = document.querySelector("[data-more]:target");
+    const id = location.hash.slice(1);
+    const target = id ? list?.querySelector(`[data-more][id="${CSS.escape(id)}"]`) : null;
 
     if (target) {
       showAll();
