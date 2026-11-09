@@ -89,13 +89,36 @@ const format = new Intl.NumberFormat("en-US", { notation: "compact" });
 }
 
 <script>
-  const list = document.querySelector("#works");
+  const list = document.querySelector<HTMLElement>("#works");
   const more = document.querySelector<HTMLButtonElement>(".more");
 
   const showAll = () => {
     list?.toggleAttribute("data-all", true);
     more?.remove();
   };
+
+  let landing: { shown: boolean } | undefined;
+
+  list?.addEventListener(
+    "pointerover",
+    (event) => {
+      if (event.pointerType !== "mouse" && !landing && event.target instanceof Element) {
+        const month = event.target.closest<HTMLElement>(".meter .month");
+        landing = { shown: month !== null && "picked" in month.dataset };
+      }
+    },
+    true,
+  );
+
+  list?.addEventListener("click", (event) => {
+    if (landing && event.target instanceof Element && event.target.closest(".meter") && !landing.shown) {
+      event.preventDefault();
+    }
+
+    landing = undefined;
+  });
+
+  list?.addEventListener("pointercancel", () => (landing = undefined));
 
   more?.addEventListener("click", () => {
     showAll();
