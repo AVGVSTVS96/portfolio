@@ -4,6 +4,8 @@
   "installCommand": "bun install --frozen-lockfile --ignore-scripts",
   "redirects": [
     { "source": "/blog", "destination": "/#writing" },
-    { "source": "/about", "destination": "/" }
+    { "source": "/blog/", "destination": "/#writing" },
+    { "source": "/about", "destination": "/" },
+    { "source": "/about/", "destination": "/" }
   ]
 }
