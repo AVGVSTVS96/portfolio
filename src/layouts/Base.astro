@@ -42,6 +42,10 @@ const image = new URL("/og.png", Astro.site);
         localStorage.getItem("finish") ??
         (matchMedia("(prefers-color-scheme: light)").matches ? "silver" : "black");
 
+      document
+        .querySelector('meta[name="theme-color"]')
+        .setAttribute("content", document.documentElement.dataset.finish === "silver" ? "#e6e5e1" : "#070708");
+
       addEventListener("pagereveal", (event) => {
         if (event.viewTransition) {
           document.documentElement.dataset.arrived = "";

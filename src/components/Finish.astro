@@ -12,13 +12,13 @@
 
   const show = () => {
     button?.setAttribute("aria-checked", String(root.dataset.finish === "silver"));
-    themeColor?.setAttribute("content", getComputedStyle(root).getPropertyValue("--bg"));
   };
 
   const apply = (finish: string) => {
     root.dataset.finish = finish;
     localStorage.setItem("finish", finish);
     show();
+    themeColor?.setAttribute("content", getComputedStyle(root).getPropertyValue("--bg"));
   };
 
   show();
