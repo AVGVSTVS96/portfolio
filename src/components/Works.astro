@@ -102,6 +102,19 @@ const format = new Intl.NumberFormat("en-US", { notation: "compact" });
     list?.querySelector<HTMLElement>("[data-more] a")?.focus();
   });
 
+  const revealHash = () => {
+    const target = document.querySelector("[data-more]:target");
+
+    if (target) {
+      showAll();
+      target.scrollIntoView();
+    }
+  };
+
+  revealHash();
+
+  addEventListener("hashchange", revealHash);
+
   document.addEventListener("click", (event) => {
     if (event.target instanceof Element && event.target.closest('a[href^="#work-"]')) {
       showAll();
