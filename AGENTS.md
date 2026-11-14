@@ -10,6 +10,15 @@ Bassim's personal site. Astro 7, static, no UI framework. Japanese 90s electroni
 - `bun run sync` refreshes `src/data/activity.json` with the `gh` CLI: the year's contribution calendar, the last 30 days of contributions per repo, and per-project commits by month and stars.
 - `bun run deploy` deploys: it syncs, commits the data and runs `vercel deploy --prod` from a clean copy of committed `main`, so work in progress never ships. The 5am `portfolio-sync` timer runs it.
 
+## Working in jj
+
+jj sits on top of git here. This folder stays plain git for the deploy and anyone using git: any jj command here other than `jj workspace add` detaches its HEAD, and the deploy would then push a stale `main`.
+
+- Work in your own workspace: `jj workspace add ~/Developer/portfolio-jj/<name> --name <name> -r main@origin`, then use jj there.
+- jj skips lefthook, so run `bun run check` yourself before landing.
+- Land with plain git from this folder: `git merge --ff-only <commit>`, then `git push origin main`. `jj git push` can overwrite another agent's commit on `main`.
+- When done: `jj workspace forget <name>` and delete its folder.
+
 ## How it fits
 
 - Projects are a list in `src/data/projects.ts`; `Works.astro` orders them by stars, then iikb, seqno and autofork, then recent work, and shows the first eight. Writing is `src/content/posts`: markdown posts render here, `.yaml` entries with a `url` link out.
