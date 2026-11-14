@@ -26,9 +26,13 @@ const columns = weeks.map((week, index) => ({
 
 const daily: Record<string, number[]> = activity.daily;
 
+const listed = new Set(Object.keys(activity.repos));
+const unlisted = Object.entries(daily).filter(([id]) => !listed.has(id));
+
 const history = {
   days: activity.days,
-  daily: Object.fromEntries(Object.keys(activity.repos).map((id) => [id, daily[id] ?? activity.days.map(() => 0)])),
+  daily: Object.fromEntries([...listed].map((id) => [id, daily[id] ?? activity.days.map(() => 0)])),
+  rest: activity.private.map((count, day) => unlisted.reduce((sum, [, counts]) => sum + (counts[day] ?? 0), count)),
 };
 ---
 
@@ -108,7 +112,8 @@ const history = {
   const template = document.querySelector<HTMLTemplateElement>("#activity-track");
 
   if (history && calendar && panel && reveal && template) {
-    const { days, daily }: { days: string[]; daily: Record<string, number[]> } = JSON.parse(history.textContent ?? "{}");
+    const data: { days: string[]; daily: Record<string, number[]>; rest: number[] } = JSON.parse(history.textContent ?? "{}");
+    const { days, daily, rest } = data;
     const format = new Intl.NumberFormat("en-US");
     const short = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
     const long = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -146,20 +151,24 @@ const history = {
       const start = end - 29;
       const window = days.slice(start, end + 1);
 
-      const tracks = Object.entries(daily)
-        .map(([id, counts]) => {
-          const values = counts.slice(start, end + 1);
+      const entry = (id: string, counts: number[], other = false) => {
+        const values = counts.slice(start, end + 1);
 
-          return { id, counts: values, sum: values.reduce((a, b) => a + b, 0) };
-        })
+        return { id, counts: values, sum: values.reduce((a, b) => a + b, 0), other };
+      };
+
+      const named = Object.entries(daily)
+        .map(([id, counts]) => entry(id, counts))
         .filter(({ sum }) => sum > 0)
         .toSorted((a, b) => b.sum - a.sum);
 
-      const total = format.format(tracks.reduce((sum, track) => sum + track.sum, 0));
-      const peak = Math.max(...tracks.flatMap(({ counts }) => counts), 1);
+      const tracks = [...named, entry("private & other", rest, true)].filter(({ sum }) => sum > 0);
+
+      const total = format.format(tracks.reduce((sum, item) => sum + item.sum, 0));
+      const peak = Math.max(...named.flatMap(({ counts }) => counts), 1);
       const grid = panel.querySelector<HTMLElement>(".tracks");
 
-      const rows = tracks.map(({ id, counts, sum }) => {
+      const rows = tracks.map(({ id, counts, sum, other }) => {
         const fragment = template.content.cloneNode(true);
 
         if (!(fragment instanceof DocumentFragment)) {
@@ -174,13 +183,15 @@ const history = {
           name.textContent = id;
           amount.textContent = format.format(sum);
 
-          if (document.querySelector(`#work-${id}`)) {
+          if (other) {
+            row.dataset.other = "";
+          } else if (document.querySelector(`#work-${id}`)) {
             name.setAttribute("href", `#work-${id}`);
           }
 
           for (const [i, count] of counts.entries()) {
             const tick = document.createElement("span");
-            const glow = count === 0 ? 0 : 0.28 + 0.72 * Math.sqrt(count / peak);
+            const glow = count === 0 ? 0 : Math.min(1, 0.28 + 0.72 * Math.sqrt(count / peak)) * (other ? 0.5 : 1);
             tick.className = "tick";
             tick.style.setProperty("--glow", String(glow));
             tick.toggleAttribute("data-bright", glow >= 0.75);
