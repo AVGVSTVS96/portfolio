@@ -86,11 +86,6 @@ export const projects: Project[] = [
     blurb: "Keeps coding agents from running Linux out of memory.",
   },
   {
-    id: "speed",
-    repo: "AVGVSTVS96/speed",
-    blurb: "True tokens per second for every Claude Code and Codex response.",
-  },
-  {
     id: "prompt-picker",
     repo: "AVGVSTVS96/prompt-picker",
     blurb: "Search every prompt you've sent to Claude Code, Codex and pi.",
@@ -137,11 +132,6 @@ export const projects: Project[] = [
     id: "said",
     repo: "AVGVSTVS96/said",
     blurb: "Dictation that doesn't edit you.",
-  },
-  {
-    id: "textpeek",
-    repo: "AVGVSTVS96/textpeek",
-    blurb: "macOS message previews, but only for people you don't know.",
   },
   {
     id: "snailmail",
