@@ -12,7 +12,7 @@ Bassim's personal site. Astro 7, static, no UI framework. Japanese 90s electroni
 
 ## Working in jj
 
-jj sits on top of git here. This folder stays plain git for the deploy and anyone using git: any jj command here other than `jj workspace add` detaches its HEAD, and the deploy would then push a stale `main`.
+jj sits on top of git here. This folder stays plain git for the deploy and anyone using git: any jj command here other than `jj workspace add` or `forget` detaches its HEAD, and the deploy would then push a stale `main`.
 
 - Work in your own workspace: `jj workspace add ~/Developer/portfolio-jj/<name> --name <name> -r main@origin`, then use jj there.
 - jj skips lefthook, so run `bun run check` yourself before landing.
