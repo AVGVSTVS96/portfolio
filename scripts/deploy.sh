@@ -1,5 +1,8 @@
 #!/bin/sh
 set -eu
+# The 5am sync and the pipeline both run this; one at a time.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/portfolio-deploy.lock"
+flock 9
 
 repo=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 git -C "$repo" fetch --quiet origin main
