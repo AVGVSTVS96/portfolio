@@ -2,6 +2,12 @@
 set -eu
 
 repo=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+git -C "$repo" fetch --quiet origin main
+if [ "$(git -C "$repo" branch --show-current)" = main ]; then
+  git -C "$repo" merge --quiet --ff-only origin/main
+else
+  git -C "$repo" fetch --quiet origin main:main
+fi
 copy=$(mktemp -d "${XDG_CACHE_HOME:-$HOME/.cache}/portfolio-deploy.XXXXXX")
 trap 'git -C "$repo" worktree remove --force "$copy"' EXIT
 
