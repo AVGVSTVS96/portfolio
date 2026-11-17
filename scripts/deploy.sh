@@ -23,7 +23,7 @@ bun install --frozen-lockfile
 bun scripts/sync.ts
 
 if ! git diff --quiet src/data/activity.json; then
-  git commit --quiet -m "chore(data): sync activity" src/data/activity.json
+  git commit --quiet -m "chore(data): sync activity [skip ci]" src/data/activity.json
 fi
 
 bun run build
