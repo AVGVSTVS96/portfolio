@@ -1,15 +1,14 @@
 ---
-import activity from "../data/activity.json";
 import { projects } from "../data/projects";
-import { npmVersion } from "../lib/data";
+import type { Data } from "../lib/data";
 
-const versions = new Map(
-  await Promise.all(
-    projects.flatMap(({ id, npm }) => (npm ? [npmVersion(npm).then((version) => [id, version] as const)] : [])),
-  ),
-);
+interface Props {
+  data: Data;
+}
 
-const repos: Record<string, { stars: number; commits: number[] }> = activity.repos;
+const { activity, versions } = Astro.props.data;
+
+const { repos } = activity;
 
 const shown = 8;
 const featured = ["iikb", "seqno", "autofork"];

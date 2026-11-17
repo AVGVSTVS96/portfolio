@@ -95,7 +95,7 @@
     <p class="lede">I build dev tools, interfaces and a lot of open-source projects.</p>
     <div class="screen"></div>
     <script type="module">
-      const { calendar } = await (await fetch("/src/data/activity.json")).json();
+      const { calendar } = await (await fetch("/activity.json")).json();
       const { days } = calendar;
       const counts = days
         .map((day) => day.count)

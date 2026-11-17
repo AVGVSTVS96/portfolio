@@ -1,10 +1,17 @@
 ---
+import { GITHUB_TOKEN } from "astro:env/server";
+
 import Activity from "../components/Activity.astro";
 import Links from "../components/Links.astro";
 import Section from "../components/Section.astro";
 import Works from "../components/Works.astro";
 import Writing from "../components/Writing.astro";
 import Base from "../layouts/Base.astro";
+import { load } from "../lib/data";
+
+export const prerender = false;
+
+const data = await load(GITHUB_TOKEN);
 ---
 
 <Base title="Bassim Shahidy" description="Bassim Shahidy builds open-source dev tools, interfaces and a lot of side projects.">
@@ -18,7 +25,7 @@ import Base from "../layouts/Base.astro";
           href="https://www.assistant-ui.com">assistant-ui</a
         >, YC W25. San Francisco.
       </p>
-      <Links />
+      <Links data={data} />
     </section>
 
     <Section jp="活動" title="Activity">
@@ -26,14 +33,14 @@ import Base from "../layouts/Base.astro";
         <span data-hover>Click any day</span>
         <span data-touch>Tap any day</span>
       </span>
-      <Activity />
+      <Activity data={data} />
     </Section>
 
     <Section jp="作品" title="Works">
       <span class="hint label" slot="hint" aria-hidden="true">
         <span>Commits by month</span>
       </span>
-      <Works />
+      <Works data={data} />
     </Section>
 
     <Section jp="文章" title="Writing" id="writing">

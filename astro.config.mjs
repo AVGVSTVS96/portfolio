@@ -1,7 +1,8 @@
 import { readFileSync, globSync } from "node:fs";
 
 import sitemap from "@astrojs/sitemap";
-import { defineConfig, fontProviders } from "astro/config";
+import vercel from "@astrojs/vercel";
+import { defineConfig, envField, fontProviders } from "astro/config";
 
 import { codeTheme } from "./src/lib/code-theme";
 
@@ -14,7 +15,13 @@ const japanese = globSync("src/**/*.astro").flatMap(
 export default defineConfig({
   site: "https://bassim.im",
   trailingSlash: "never",
+  adapter: vercel({ isr: { expiration: 3600 } }),
   integrations: [sitemap()],
+  env: {
+    schema: {
+      GITHUB_TOKEN: envField.string({ context: "server", access: "secret" }),
+    },
+  },
   fonts: [
     {
       provider: fontProviders.fontsource(),

@@ -7,7 +7,6 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "sync": "bun scripts/sync.ts",
     "og": "bun scripts/og.ts",
     "deploy": "sh scripts/deploy.sh",
     "check": "astro sync && astro-check && oxlint && oxfmt --check",
@@ -16,6 +15,7 @@
   },
   "dependencies": {
     "@astrojs/sitemap": "3.7.5",
+    "@astrojs/vercel": "11.0.22",
     "astro": "7.4.12",
     "motion": "14.14.0"
   },

@@ -1,5 +1,7 @@
 import { launch } from "puppeteer-core";
 
+import { github } from "../src/lib/github";
+
 const root = new URL("..", import.meta.url).pathname;
 
 const shots = [
@@ -12,9 +14,12 @@ const shots = [
   },
 ] as const;
 
+const activity = await github(Bun.env.GITHUB_TOKEN ?? "");
+
 const server = Bun.serve({
   hostname: "127.0.0.1",
   port: 0,
+  routes: { "/activity.json": Response.json(activity) },
   fetch: async (request) => {
     const file = Bun.file(root + new URL(request.url).pathname);
 

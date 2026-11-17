@@ -1,7 +1,12 @@
 ---
-import activity from "../data/activity.json";
 import Grouped from "./Grouped.astro";
-import { contributions, weeks } from "../lib/data";
+import type { Data } from "../lib/data";
+
+interface Props {
+  data: Data;
+}
+
+const { activity, weeks, total: lastYear } = Astro.props.data;
 
 const format = new Intl.NumberFormat("en-US");
 const month = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
@@ -9,7 +14,7 @@ const long = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short"
 
 const plural = (count: number, word: string) => (count === 1 ? word : `${word}s`);
 
-const total = format.format(contributions.total.lastYear);
+const total = format.format(lastYear);
 const padding = 7 - (weeks[0]?.length ?? 7);
 
 const date = (week: number, at: number) => new Date(weeks[week]?.at(at)?.date ?? "");
